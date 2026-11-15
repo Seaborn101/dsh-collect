@@ -4,3 +4,6 @@ build/
 _artifact/
 __pycache__/
 *.pyc
+.signing/
+keystore.jks
+keystore.properties
