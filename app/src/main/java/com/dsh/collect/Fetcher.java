@@ -48,6 +48,15 @@ public final class Fetcher {
                 break;
             }
         }
+
+        // 开了「收藏后自动加工」→ 立刻调模型生成 L1 笔记
+        try {
+            Settings st = Settings.load(ctx);
+            if (st.autoProcess && !"L1".equals(a.layer)) {
+                AutoPipeline.process(ctx, a.id);
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     /** 异步抓取一篇 */
