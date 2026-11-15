@@ -204,19 +204,28 @@ def extract_title(page: str) -> str:
 
 
 def extract_account(page: str) -> str:
-    """公众号名：og:site_name -> var nickname -> a#js_name。"""
-    name = _meta_content(page, "og:site_name")
-    if name:
-        return name
+    """公众号名：var nickname -> a#js_name -> og:site_name。
+
+    注意：og:site_name 在微信文章里恒等于「微信公众平台」（通用占位名），
+    不是真实账号，所以只能当最后的兜底。
+    """
+    candidates = []
     name = _js_var(page, "nickname")
     if name:
-        return name
+        candidates.append(name)
     m = re.search(
         r"<a[^>]*id\s*=\s*['\"]js_name['\"][^>]*>(.*?)</a>", page, re.I | re.S
     )
     if m:
-        return _clean_inline(m.group(1))
-    return ""
+        candidates.append(_clean_inline(m.group(1)))
+    name = _meta_content(page, "og:site_name")
+    if name:
+        candidates.append(name)
+    for c in candidates:
+        c = (c or "").strip()
+        if c and c != "微信公众平台":
+            return c
+    return candidates[0].strip() if candidates else ""
 
 
 def _extract_div(page: str, class_name: str) -> str:
