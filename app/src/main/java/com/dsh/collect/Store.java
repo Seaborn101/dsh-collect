@@ -275,6 +275,30 @@ public final class Store {
 
     // ------------------------------------------------------------ 调试
 
+    /** 共享目录里现有的素材文件数（含 archived），用于提示"可恢复多少篇" */
+    public static int countMaterialFiles(Context ctx) {
+        File d = collectedDir(ctx);
+        int n = 0;
+        File[] fs = d.listFiles();
+        if (fs != null) {
+            for (File f : fs) {
+                if (f.isFile() && f.getName().endsWith(".md")) {
+                    n++;
+                } else if (f.isDirectory() && f.getName().equals("archived")) {
+                    File[] sub = f.listFiles();
+                    if (sub != null) {
+                        for (File x : sub) {
+                            if (x.isFile() && x.getName().endsWith(".md")) {
+                                n++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return n;
+    }
+
     /** 追加一行调试日志（记录 intent 长什么样，方便排查） */
     public static void debug(Context ctx, String line) {
         File d = collectedDir(ctx);
