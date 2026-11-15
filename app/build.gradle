@@ -2,6 +2,14 @@ plugins {
     id 'com.android.application'
 }
 
+// 固定签名：CI 每次构建用同一份密钥，APK 签名不变 → 可以直接覆盖安装，App 数据不丢
+def keystorePropsFile = rootProject.file("keystore.properties")
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+def hasSigning = keystoreProps.containsKey("storeFile")
+
 android {
     namespace 'com.dsh.collect'
     compileSdk 34
@@ -14,9 +22,29 @@ android {
         versionName '1.0'
     }
 
+    signingConfigs {
+        if (hasSigning) {
+            create("dsh") {
+                storeFile rootProject.file(keystoreProps["storeFile"])
+                storePassword keystoreProps["storePassword"]
+                keyAlias keystoreProps["keyAlias"]
+                keyPassword keystoreProps["keyPassword"]
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            minifyEnabled false
+            if (hasSigning) {
+                signingConfig signingConfigs.dsh
+            }
+        }
         release {
             minifyEnabled false
+            if (hasSigning) {
+                signingConfig signingConfigs.dsh
+            }
         }
     }
 
