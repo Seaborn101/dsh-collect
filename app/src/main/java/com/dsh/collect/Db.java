@@ -19,7 +19,7 @@ import java.util.List;
 public class Db extends SQLiteOpenHelper {
 
     private static final String NAME = "collect.db";
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
 
     private static final String T_ARTICLES = "articles";
 
@@ -62,8 +62,12 @@ public class Db extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + T_ARTICLES);
-        onCreate(db);
+        if (oldVersion < 2) {
+            try {
+                db.execSQL("ALTER TABLE " + T_ARTICLES + " ADD COLUMN export_name TEXT DEFAULT ''");
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     // ---------------------------------------------------------------- 写入
@@ -89,6 +93,7 @@ public class Db extends SQLiteOpenHelper {
         v.put("read_at", a.readAt);
         v.put("fetch_state", a.fetchState);
         v.put("notes", a.notes);
+        v.put("export_name", a.exportName);
         // 空正文不覆盖已有内容（重复收集同一篇时保住抓到的正文）
         if (a.contentHtml == null || a.contentHtml.isEmpty()) {
             v.remove("content_html");
@@ -171,8 +176,15 @@ public class Db extends SQLiteOpenHelper {
         db.update(T_ARTICLES, v, "id=?", new String[]{String.valueOf(id)});
     }
 
-    public synchronized void updateTags(long id, String tags) {
+    /** 记住导出文件名（标题变化时重命名而不是新建文件） */
+    public synchronized void updateExportName(long id, String name) {
         SQLiteDatabase db = getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put("export_name", name);
+        db.update(T_ARTICLES, v, "id=?", new String[]{String.valueOf(id)});
+    }
+
+    public synchronized void updateTags(long id, String tags) {        SQLiteDatabase db = getWritableDatabase();
         ContentValues v = new ContentValues();
         v.put("tags", tags);
         v.put("updated_at", System.currentTimeMillis());
@@ -203,6 +215,7 @@ public class Db extends SQLiteOpenHelper {
         a.readAt = c.getLong(c.getColumnIndexOrThrow("read_at"));
         a.fetchState = str(c, "fetch_state");
         a.notes = str(c, "notes");
+        a.exportName = str(c, "export_name");
         return a;
     }
 
