@@ -45,6 +45,16 @@ public class Article {
     public long publishedAt = 0L;
     /** 人工信号：high / neutral / low */
     public String signal = "";
+    /** 分类目录名（AI 判定） */
+    public String category = "";
+    /** AI 要点（换行分隔） */
+    public String keyPoints = "";
+    /** AI 抽出的可复用结论（换行分隔） */
+    public String takeaways = "";
+    /** AI 选出的原文金句 */
+    public String quote = "";
+    /** AI 点评 */
+    public String note = "";
 
     public boolean isUnread() {
         return STATUS_NEW.equals(status);
