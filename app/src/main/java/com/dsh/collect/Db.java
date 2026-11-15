@@ -19,7 +19,7 @@ import java.util.List;
 public class Db extends SQLiteOpenHelper {
 
     private static final String NAME = "collect.db";
-    private static final int VERSION = 3;
+    private static final int VERSION = 4;
 
     private static final String T_ARTICLES = "articles";
 
@@ -55,26 +55,36 @@ public class Db extends SQLiteOpenHelper {
                 + "starred INTEGER DEFAULT 0,"
                 + "read_at INTEGER DEFAULT 0,"
                 + "fetch_state TEXT DEFAULT 'pending',"
-                + "notes TEXT DEFAULT ''"
+                + "notes TEXT DEFAULT '',"
+                // v2+
+                + "export_name TEXT DEFAULT '',"
+                // v3+
+                + "layer TEXT DEFAULT 'L0',"
+                + "author TEXT DEFAULT '',"
+                + "published_at INTEGER DEFAULT 0"
                 + ")");
         db.execSQL("CREATE INDEX idx_articles_collected ON " + T_ARTICLES + " (collected_at DESC)");
     }
 
+    /**
+     * 升级：缺哪列补哪列。
+     *
+     * <p>不能只按版本号加列——v4 之前的 bug 让全新安装的库缺了 v2/v3 的列，
+     * 而那些库的 version 已经是 3，onUpgrade 不会再触发。这里改成无条件检查列是否存在。
+     */
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        if (oldVersion < 2) {
-            try {
-                db.execSQL("ALTER TABLE " + T_ARTICLES + " ADD COLUMN export_name TEXT DEFAULT ''");
-            } catch (Exception ignored) {
-            }
-        }
-        if (oldVersion < 3) {
-            try {
-                db.execSQL("ALTER TABLE " + T_ARTICLES + " ADD COLUMN layer TEXT DEFAULT 'L0'");
-                db.execSQL("ALTER TABLE " + T_ARTICLES + " ADD COLUMN author TEXT DEFAULT ''");
-                db.execSQL("ALTER TABLE " + T_ARTICLES + " ADD COLUMN published_at INTEGER DEFAULT 0");
-            } catch (Exception ignored) {
-            }
+        addColumnIfMissing(db, "export_name", "TEXT DEFAULT ''");
+        addColumnIfMissing(db, "layer", "TEXT DEFAULT 'L0'");
+        addColumnIfMissing(db, "author", "TEXT DEFAULT ''");
+        addColumnIfMissing(db, "published_at", "INTEGER DEFAULT 0");
+    }
+
+    private void addColumnIfMissing(SQLiteDatabase db, String name, String type) {
+        try {
+            db.execSQL("ALTER TABLE " + T_ARTICLES + " ADD COLUMN " + name + " " + type);
+        } catch (Exception ignored) {
+            // 已存在时会抛异常，忽略即可
         }
     }
 
@@ -82,6 +92,25 @@ public class Db extends SQLiteOpenHelper {
 
     /** 插入或更新（按 url 去重）；返回记录 id */
     public synchronized long upsert(Article a) {
+        try {
+            return upsertInternal(a);
+        } catch (android.database.sqlite.SQLiteException e) {
+            // 库结构异常（例如老版本建表缺列）→ 重建表再试一次。
+            // 共享目录才是唯一真相，重建不丢东西，导入会补回来。
+            if (String.valueOf(e.getMessage()).contains("no such column")) {
+                try {
+                    SQLiteDatabase db = getWritableDatabase();
+                    db.execSQL("DROP TABLE IF EXISTS " + T_ARTICLES);
+                    onCreate(db);
+                    return upsertInternal(a);
+                } catch (Exception ignored) {
+                }
+            }
+            return -1L;
+        }
+    }
+
+    private long upsertInternal(Article a) {
         SQLiteDatabase db = getWritableDatabase();
         long now = System.currentTimeMillis();
         a.updatedAt = now;
@@ -266,6 +295,15 @@ public class Db extends SQLiteOpenHelper {
     /** 按条件查询，倒序 */
     public synchronized List<Article> query(String keyword, String status, boolean onlyStarred,
                                            String tag) {
+        try {
+            return queryInternal(keyword, status, onlyStarred, tag);
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+
+    private List<Article> queryInternal(String keyword, String status, boolean onlyStarred,
+                                        String tag) {
         StringBuilder sql = new StringBuilder("SELECT * FROM " + T_ARTICLES + " WHERE 1=1");
         List<String> args = new ArrayList<>();
         if (status != null && !status.isEmpty()) {
@@ -304,6 +342,14 @@ public class Db extends SQLiteOpenHelper {
     }
 
     public synchronized Article byId(long id) {
+        try {
+            return byIdInternal(id);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Article byIdInternal(long id) {
         Cursor c = getReadableDatabase().rawQuery("SELECT * FROM " + T_ARTICLES + " WHERE id=?",
                 new String[]{String.valueOf(id)});
         try {
@@ -314,6 +360,14 @@ public class Db extends SQLiteOpenHelper {
     }
 
     public synchronized Article byUrl(String url) {
+        try {
+            return byUrlInternal(url);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Article byUrlInternal(String url) {
         Cursor c = getReadableDatabase().rawQuery("SELECT * FROM " + T_ARTICLES + " WHERE url=?",
                 new String[]{url});
         try {
