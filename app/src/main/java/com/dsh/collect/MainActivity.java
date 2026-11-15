@@ -117,11 +117,33 @@ public class MainActivity extends Activity {
         buildChips();
         refresh();
         // 自愈导入：App 被卸载重装后，从共享目录把素材读回来
+        runImport();
+        // 补抓还没正文的记录
+        Fetcher.fetchPendingAsync(this);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        refresh();
+        // 授权后回到 App 也要能立刻导入（否则必须重启才生效）
+        runImport();
+    }
+
+    /** 是否有导入任务正在进行 */
+    private volatile boolean importing = false;
+
+    private void runImport() {
+        if (importing) {
+            return;
+        }
+        importing = true;
         final Context app = getApplicationContext();
         new Thread(new Runnable() {
             @Override
             public void run() {
                 final Import.Result r = Import.restore(app, db);
+                importing = false;
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -133,14 +155,6 @@ public class MainActivity extends Activity {
                 });
             }
         }).start();
-        // 补抓还没正文的记录
-        Fetcher.fetchPendingAsync(this);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        refresh();
     }
 
     // ------------------------------------------------------------ 筛选
@@ -207,7 +221,11 @@ public class MainActivity extends Activity {
     private void refresh() {
         boolean ok = Store.canUseShared(this);
         permBtn.setVisibility(ok ? View.GONE : View.VISIBLE);
-        pathText.setText("导出目录：" + Store.collectedDir(this).getAbsolutePath());
+        if (!ok) {
+            permBtn.setText("授予文件夹访问权限（恢复已保存的素材）");
+        }
+        pathText.setText("导出目录：" + Store.collectedDir(this).getAbsolutePath()
+                + " · 目录内 " + Store.countMaterialFiles(this) + " 篇");
 
         syncLayers();
 
@@ -215,7 +233,14 @@ public class MainActivity extends Activity {
         List<Article> all = db.query(kw, filterStatus, onlyStar, tagFilter);
         adapter.items = all;
         adapter.notifyDataSetChanged();
-        empty.setVisibility(all.isEmpty() ? View.VISIBLE : View.GONE);
+        boolean isEmpty = all.isEmpty();
+        list.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+        empty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+        if (isEmpty) {
+            empty.setText(ok
+                    ? getString(R.string.empty_hint)
+                    : getString(R.string.empty_no_perm));
+        }
 
         int total = db.count();
         int unread = db.countStatus(Article.STATUS_NEW);
