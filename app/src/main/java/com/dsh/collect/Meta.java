@@ -63,12 +63,7 @@ final class Meta {
                     "var\\s+msg_title\\s*=\\s*['\"]([^'\"]*)['\"]",
                     "<h1[^>]*class=\"[^\"]*rich_media_title[^\"]*\"[^>]*>(.*?)</h1>"
             });
-            r.account = firstMatch(html, new String[]{
-                    "<meta\\s+property=\"og:site_name\"\\s+content=\"([^\"]*)\"",
-                    "<meta\\s+content=\"([^\"]*)\"\\s+property=\"og:site_name\"",
-                    "var\\s+nickname\\s*=\\s*['\"]([^'\"]*)['\"]",
-                    "<a[^>]*id=\"js_name\"[^>]*>(.*?)</a>"
-            });
+            r.account = pickAccount(html);
             r.title = Html.decodeEntities(r.title).trim();
             r.account = Html.decodeEntities(r.account).trim();
             r.text = Html.toText(Html.extractMain(html));
@@ -82,6 +77,37 @@ final class Meta {
                 conn.disconnect();
             }
         }
+    }
+
+    /**
+     * 取公众号名。
+     *
+     * <p>注意：{@code og:site_name} 在微信文章里恒等于「微信公众平台」，不是真账号名，
+     * 所以必须优先用 {@code var nickname} / {@code <a id="js_name">}，og 只作最后兜底。
+     */
+    private static String pickAccount(String html) {
+        String[] patterns = {
+                "var\\s+nickname\\s*=\\s*['\"]([^'\"]*)['\"]",
+                "<a[^>]*id=\"js_name\"[^>]*>(.*?)</a>",
+                "<meta\\s+property=\"og:site_name\"\\s+content=\"([^\"]*)\"",
+                "<meta\\s+content=\"([^\"]*)\"\\s+property=\"og:site_name\""
+        };
+        String fallback = "";
+        for (String p : patterns) {
+            String v = firstMatch(html, new String[]{p});
+            if (v.isEmpty()) {
+                continue;
+            }
+            if (v.equals("微信公众平台")) {
+                // 通用占位名，记下来但不当真账号
+                if (fallback.isEmpty()) {
+                    fallback = v;
+                }
+                continue;
+            }
+            return v;
+        }
+        return fallback;
     }
 
     private static String firstMatch(String html, String[] patterns) {
