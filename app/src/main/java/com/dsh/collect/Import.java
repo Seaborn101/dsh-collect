@@ -151,6 +151,13 @@ public final class Import {
                 }
             }
         }
+        // 4) 把无权限期间落在 App 私有目录的素材提升到共享目录（共享目录才是唯一真相）
+        if (Store.canUseShared(ctx)) {
+            try {
+                Store.exportAll(ctx, db.all());
+            } catch (Exception ignored) {
+            }
+        }
         return r;
     }
 
