@@ -37,6 +37,12 @@ public class Article {
     public String notes = "";
     /** 导出到共享目录时用的文件名（稳定，标题变化时重命名而不是新建） */
     public String exportName = "";
+    /** 加工层级：L0 原始素材 / L1 已初加工 / L2 已综述 */
+    public String layer = "L0";
+    /** 作者（原文作者/机构） */
+    public String author = "";
+    /** 原文发布时间（毫秒） */
+    public long publishedAt = 0L;
 
     public boolean isUnread() {
         return STATUS_NEW.equals(status);
@@ -71,5 +77,10 @@ public class Article {
 
     public int contentLength() {
         return contentText == null ? 0 : contentText.length();
+    }
+
+    /** 是否已被 AI 加工过（L1 及以上） */
+    public boolean isProcessed() {
+        return layer != null && !layer.isEmpty() && !"L0".equals(layer);
     }
 }
