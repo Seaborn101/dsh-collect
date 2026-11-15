@@ -123,11 +123,28 @@ public final class Store {
 
     // ------------------------------------------------------------ 导出
 
-    /** 导出单篇为 Markdown（正文一并写入，方便离线阅读与 agent 处理） */
+    /**
+     * 导出单篇为 Markdown（正文一并写入，方便离线阅读与 agent 处理）。
+     *
+     * <p>文件名跟着标题走，但**同一个 url 只有一个文件**：标题变了就重命名，
+     * 不会像早期版本那样留下「占位标题 + 真标题」两份孤儿文件。
+     */
     public static File exportMd(Context ctx, Article a) {
         File dir = collectedDir(ctx);
-        String name = stamp(a.collectedAt) + "_" + safeName(a.title) + ".md";
-        File f = new File(dir, name);
+        String desired = stamp(a.collectedAt) + "_" + safeName(a.title) + ".md";
+        String old = a.exportName;
+        if (old == null || old.isEmpty()) {
+            a.exportName = desired;
+        } else if (!old.equals(desired)) {
+            File of = new File(dir, old);
+            File nf = new File(dir, desired);
+            if (of.exists() && !nf.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                of.renameTo(nf);
+            }
+            a.exportName = desired;
+        }
+        File f = new File(dir, a.exportName);
         writeMarkdown(f, a);
         return f;
     }
@@ -212,6 +229,7 @@ public final class Store {
         sb.append(",\"starred\":").append(a.starred);
         sb.append(",\"summary\":\"").append(esc(a.summary)).append("\"");
         sb.append(",\"content_length\":").append(a.contentLength());
+        sb.append(",\"file\":\"").append(esc(a.exportName)).append("\"");
         sb.append("}");
         return sb.toString();
     }
