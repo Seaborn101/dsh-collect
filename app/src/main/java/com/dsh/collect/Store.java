@@ -190,10 +190,15 @@ public final class Store {
             w = new OutputStreamWriter(new FileOutputStream(f, false), "UTF-8");
             w.write("---\n");
             w.write("title: " + oneLine(a.title) + "\n");
+            w.write("layer: " + oneLine(a.layer) + "\n");
             w.write("account: " + oneLine(a.account) + "\n");
+            w.write("author: " + oneLine(a.author) + "\n");
             w.write("url: " + oneLine(a.url) + "\n");
             w.write("source: " + oneLine(a.source) + "\n");
             w.write("collected: " + readable(a.collectedAt) + "\n");
+            if (a.publishedAt > 0) {
+                w.write("published: " + readable(a.publishedAt) + "\n");
+            }
             w.write("tags: " + oneLine(a.tags) + "\n");
             w.write("status: " + oneLine(a.status) + "\n");
             w.write("summary: " + oneLine(a.summary) + "\n");
@@ -230,8 +235,24 @@ public final class Store {
         sb.append(",\"summary\":\"").append(esc(a.summary)).append("\"");
         sb.append(",\"content_length\":").append(a.contentLength());
         sb.append(",\"file\":\"").append(esc(a.exportName)).append("\"");
+        sb.append(",\"layer\":\"").append(esc(a.layer)).append("\"");
+        sb.append(",\"author\":\"").append(esc(a.author)).append("\"");
+        sb.append(",\"published_at\":\"").append(a.publishedAt > 0 ? readable(a.publishedAt) : "")
+                .append("\"");
+        sb.append(",\"signal\":\"").append(esc(signalOf(a))).append("\"");
         sb.append("}");
         return sb.toString();
+    }
+
+    /** 人工信号：星标=高价值，归档=不感兴趣，其余中性 */
+    public static String signalOf(Article a) {
+        if (a.starred) {
+            return "high";
+        }
+        if (Article.STATUS_ARCHIVED.equals(a.status)) {
+            return "low";
+        }
+        return "neutral";
     }
 
     private static String esc(String s) {
