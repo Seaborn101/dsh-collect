@@ -31,8 +31,20 @@ public final class Import {
         int updated = 0;
     }
 
-    /** 从共享目录恢复全部素材 */
+    /** 从共享目录恢复全部素材（任何异常都不许把 App 带崩） */
     public static Result restore(Context ctx, Db db) {
+        try {
+            return restoreInternal(ctx, db);
+        } catch (Throwable t) {
+            try {
+                Store.debug(ctx, "import failed: " + t);
+            } catch (Throwable ignored) {
+            }
+            return new Result();
+        }
+    }
+
+    private static Result restoreInternal(Context ctx, Db db) {
         Result r = new Result();
         File dir = Store.collectedDir(ctx);
         if (dir == null || !dir.exists()) {
