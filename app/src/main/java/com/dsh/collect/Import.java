@@ -49,7 +49,14 @@ public final class Import {
             if (a == null || a.url.isEmpty()) {
                 continue;
             }
-            byUrl.put(a.url, a);
+            Article prev = byUrl.get(a.url);
+            if (prev == null) {
+                byUrl.put(a.url, a);
+            } else if (bodyLen(a) > bodyLen(prev)) {
+                // 同一篇文章可能有「占位版 + 完整版」两个文件（DB 丢过时导出产生的），
+                // 保留内容多的那个
+                byUrl.put(a.url, a);
+            }
         }
 
         // 2) 读 jsonl（agent 侧状态更权威：加工层级、标签、状态、星标）
@@ -145,6 +152,10 @@ public final class Import {
             }
         }
         return r;
+    }
+
+    private static int bodyLen(Article a) {
+        return a == null || a.contentText == null ? 0 : a.contentText.length();
     }
 
     private static void collectMd(File dir, List<File> out, int depth) {
