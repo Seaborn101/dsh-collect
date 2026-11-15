@@ -14,6 +14,8 @@
 | `fetch_article.py` | 命令行工具：抓一篇（或批量）微信公众号文章，输出清洗后的正文纯文本 |
 | `collect_lib.py` | 可 import 的小库：读写收藏目录里的 `*.md` 和 `articles.jsonl` |
 | `list_collected.py` | 之前就有的：列出收藏（本次未改动） |
+| `kb_index.py` | **检索层**：把 Obsidian 知识库（`微信素材库/`）扫进 DuckDB，按关键词检索 |
+| `kb_selftest.sh` | `kb_index.py` 的自测脚本：造夹具 → build → search → stats |
 
 ## 和 App 的关系
 
@@ -124,6 +126,50 @@ collect_lib.update_jsonl("/sdcard/Download/DSH-Go/collected", articles)
 ```bash
 python3 scripts/collect_lib.py            # 列出收藏目录里的文章
 python3 scripts/collect_lib.py /sdcard/Download/DSH-Go/collected
+```
+
+## kb_index.py —— 知识库的检索层
+
+把 Obsidian 里的 Markdown（L1 初加工笔记 / L2 主题综述）扫进一个 **DuckDB** 库，
+再按关键词检索。只用标准库 + duckdb，**不联网、不装扩展**（duckdb fts 是可选项，
+没有它也照常工作）。
+
+```bash
+# 1) 建索引（增量：按文件 upsert，文件删了库里的行也删）
+python3 scripts/kb_index.py build
+
+# 2) 检索（关键词空格分隔，命中标题/正文/标签/摘要任一即算命中）
+python3 scripts/kb_index.py search AI 团队
+python3 scripts/kb_index.py search "AI 团队" --limit 3     # 引号 = 短语
+python3 scripts/kb_index.py search DuckDB --json           # 给 agent 用的 JSON
+
+# 3) 统计
+python3 scripts/kb_index.py stats
+```
+
+默认路径：
+
+| 东西 | 默认值 |
+| --- | --- |
+| 知识库根目录 | `/sdcard/Documents/Obsidian/微信素材库/` |
+| 索引库 | `/sdcard/Download/DSH-Go/kb/kb.duckdb`（目录自动创建） |
+
+覆盖路径（测试时常用）：
+
+```bash
+python3 scripts/kb_index.py build  --root /tmp/kbtest --db /tmp/kbtest/kb.duckdb
+python3 scripts/kb_index.py search AI --root /tmp/kbtest --db /tmp/kbtest/kb.duckdb
+```
+
+`notes` 表字段：`id`(sha1(rel_path)) / `path` / `rel_path` / `layer` / `title` /
+`category` / `account` / `author` / `url` / `tags`(逗号分隔) / `summary` /
+`body` / `created_at`(取 front matter 的 collected，缺了用 mtime) /
+`updated_at` / `mtime`。
+
+自测：
+
+```bash
+bash scripts/kb_selftest.sh
 ```
 
 ## 常见问题
