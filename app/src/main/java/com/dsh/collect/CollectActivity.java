@@ -84,6 +84,7 @@ public class CollectActivity extends Activity {
 
         // 立即导出（先存链接，后台补正文）
         Store.exportMd(app, a);
+        db.updateExportName(a.id, a.exportName);
         Store.exportJsonl(app, db.all());
 
         // 后台抓正文
