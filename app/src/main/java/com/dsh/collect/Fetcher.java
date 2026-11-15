@@ -22,6 +22,11 @@ public final class Fetcher {
             String text = r.text;
             String summary = Html.summary(text, 120);
             db.updateContent(a.id, r.html, text, title, account, summary);
+            if (!r.author.isEmpty() || r.publishedAt > 0) {
+                db.updateAuthor(a.id, r.author, r.publishedAt);
+                a.author = r.author;
+                a.publishedAt = r.publishedAt;
+            }
             a.title = title;
             a.account = account;
             a.contentText = text;
