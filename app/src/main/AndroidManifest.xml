@@ -30,24 +30,29 @@
             </intent-filter>
         </activity>
 
-        <!-- 收集：微信「用DSH收集打开」触发；无界面，收完即退 -->
+        <!--
+          收集：微信「用DSH收集打开」触发。
+          透明 + 无启动预览 + 独立任务栈 + 不进最近任务 = 用户看不到任何界面变化。
+        -->
         <activity
             android:name=".CollectActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:noHistory="true"
             android:excludeFromRecents="true"
+            android:taskAffinity="com.dsh.collect.silent"
             android:theme="@style/Theme.Transparent">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="mp.weixin.qq.com" />
                 <data android:scheme="http" android:host="mp.weixin.qq.com" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
 

@@ -1,9 +1,6 @@
 package com.dsh.collect;
 
 import android.app.Activity;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -13,14 +10,22 @@ import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
-/** 阅读器：内嵌一个轻量 WebView 打开微信文章。 */
+/** 阅读器：内嵌 WebView（网页版）+ 离线正文。 */
 public class ReaderActivity extends Activity {
 
     private WebView web;
-    private String url = "";
+    private ScrollView offlineScroll;
+    private TextView offlineText;
+    private TextView barTitle;
+    private TextView modeWeb;
+    private TextView modeOffline;
+    private TextView modeMeta;
+
+    private long id = 0L;
+    private Article article;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,12 +33,77 @@ public class ReaderActivity extends Activity {
         setContentView(R.layout.activity_reader);
 
         web = findViewById(R.id.web);
-        url = getIntent().getStringExtra("url");
-        String title = getIntent().getStringExtra("title");
-        if (title != null && !title.isEmpty()) {
-            ((TextView) findViewById(R.id.bar_title)).setText(title);
+        offlineScroll = findViewById(R.id.offline_scroll);
+        offlineText = findViewById(R.id.offline_text);
+        barTitle = findViewById(R.id.bar_title);
+        modeWeb = findViewById(R.id.mode_web);
+        modeOffline = findViewById(R.id.mode_offline);
+        modeMeta = findViewById(R.id.mode_meta);
+
+        id = getIntent().getLongExtra("id", 0L);
+        Db db = Db.get(this);
+        article = db.byId(id);
+        if (article == null) {
+            finish();
+            return;
         }
 
+        barTitle.setText(article.title);
+        modeMeta.setText((article.account.isEmpty() ? "未知公众号" : article.account)
+                + " · " + Store.readable(article.collectedAt));
+
+        setupWeb();
+        showWeb();
+
+        // 打开即已读
+        if (article.isUnread()) {
+            db.updateStatus(article.id, Article.STATUS_READ);
+            article.status = Article.STATUS_READ;
+        }
+
+        findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (web.getVisibility() == View.VISIBLE && web.canGoBack()) {
+                    web.goBack();
+                } else {
+                    finish();
+                }
+            }
+        });
+        findViewById(R.id.btn_more).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Actions.show(ReaderActivity.this, article, new Runnable() {
+                    @Override
+                    public void run() {
+                        refreshMeta();
+                    }
+                });
+            }
+        });
+        modeWeb.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showWeb();
+            }
+        });
+        modeOffline.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showOffline();
+            }
+        });
+    }
+
+    private void refreshMeta() {
+        if (article == null) {
+            return;
+        }
+        barTitle.setText(article.title);
+    }
+
+    private void setupWeb() {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
@@ -62,50 +132,43 @@ public class ReaderActivity extends Activity {
 
             @Override
             public void onPageStarted(WebView view, String pageUrl, Bitmap favicon) {
-                ((TextView) findViewById(R.id.bar_title)).setText("加载中…");
+                modeMeta.setText("加载中…");
             }
 
             @Override
             public void onPageFinished(WebView view, String pageUrl) {
-                TextView t = findViewById(R.id.bar_title);
-                if (t.getText().toString().equals("加载中…")) {
-                    t.setText(pageUrl);
+                if (article != null) {
+                    modeMeta.setText((article.account.isEmpty() ? "未知公众号" : article.account)
+                            + " · " + Store.readable(article.collectedAt));
                 }
             }
         });
+        web.loadUrl(article.url);
+    }
 
-        findViewById(R.id.btn_back).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (web.canGoBack()) {
-                    web.goBack();
-                } else {
-                    finish();
-                }
-            }
-        });
-        findViewById(R.id.btn_copy).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                if (cm != null) {
-                    cm.setPrimaryClip(ClipData.newPlainText("link", url));
-                    Toast.makeText(getApplicationContext(), "链接已复制", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
+    private void showWeb() {
+        web.setVisibility(View.VISIBLE);
+        offlineScroll.setVisibility(View.GONE);
+        modeWeb.setSelected(true);
+        modeOffline.setSelected(false);
+    }
 
-        if (url != null && !url.isEmpty()) {
-            web.loadUrl(url);
-        } else {
-            Toast.makeText(getApplicationContext(), "没有链接", Toast.LENGTH_SHORT).show();
-            finish();
+    private void showOffline() {
+        if (article.contentText == null || article.contentText.isEmpty()) {
+            modeMeta.setText(getString(R.string.no_offline));
+            return;
         }
+        offlineText.setText(article.contentText);
+        offlineScroll.setVisibility(View.VISIBLE);
+        web.setVisibility(View.GONE);
+        modeOffline.setSelected(true);
+        modeWeb.setSelected(false);
+        offlineScroll.scrollTo(0, 0);
     }
 
     @Override
     public void onBackPressed() {
-        if (web != null && web.canGoBack()) {
+        if (web.getVisibility() == View.VISIBLE && web.canGoBack()) {
             web.goBack();
         } else {
             super.onBackPressed();

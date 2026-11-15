@@ -4,4 +4,25 @@
     <string name="grant_perm">授予文件夹访问权限</string>
     <string name="empty_hint">还没有收藏的文章。\n在微信里打开一篇文章 → 右上角「…」→ 用DSH收集打开</string>
     <string name="copy_link">复制链接</string>
+    <string name="search_hint">搜索标题、公众号、标签…</string>
+    <string name="filter_all">全部</string>
+    <string name="filter_new">未读</string>
+    <string name="filter_star">星标</string>
+    <string name="filter_archived">已归档</string>
+    <string name="export_md">导出 Markdown</string>
+    <string name="add_inbox">加入待整理队列</string>
+    <string name="mark_read">标记已读</string>
+    <string name="mark_unread">标记未读</string>
+    <string name="archive">归档</string>
+    <string name="unarchive">取消归档</string>
+    <string name="delete">删除</string>
+    <string name="edit_tags">编辑标签</string>
+    <string name="offline_mode">离线正文</string>
+    <string name="online_mode">网页版</string>
+    <string name="no_offline">正文还没抓到，稍后再试</string>
+    <string name="exported">已导出到 %s</string>
+    <string name="inbox_added">已加入待整理队列</string>
+    <string name="tags_hint">用空格分隔多个标签</string>
+    <string name="save">保存</string>
+    <string name="cancel">取消</string>
 </resources>

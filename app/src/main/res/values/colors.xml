@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#12122B</color>
-    <color name="bg_top">#1B1B3A</color>
-    <color name="divider">#2A2A4A</color>
-    <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#A9A9C8</color>
-    <color name="accent">#4F7CFF</color>
+    <!-- 浅色主题 -->
+    <color name="bg">#F4F6F9</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_alt">#EEF1F5</color>
+    <color name="divider">#E3E7ED</color>
+    <color name="text_primary">#16181C</color>
+    <color name="text_secondary">#6B7280</color>
+    <color name="text_tertiary">#9AA1AC</color>
+    <color name="accent">#07C160</color>
+    <color name="accent_weak">#E6F7EE</color>
+    <color name="accent_blue">#2F6BFF</color>
+    <color name="accent_blue_weak">#E9F0FF</color>
+    <color name="danger">#E5484D</color>
+    <color name="reader_bg">#FFFFFF</color>
 </resources>

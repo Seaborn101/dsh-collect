@@ -1,11 +1,9 @@
 package com.dsh.collect;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.widget.Toast;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -13,90 +11,110 @@ import java.util.regex.Pattern;
 /**
  * 收集入口：微信「用DSH收集打开」时触发。
  *
- * <p>无界面：拿到链接立刻落盘，然后退出；标题 / 公众号名在后台补齐后再更新同一条记录。
+ * <p>完全静默：主题透明 + 无启动预览 + 不进最近任务，收完立刻 finish，用户看不到任何界面变化。
+ * 微信实际发的是 {@code ACTION_SEND + text/plain}，文本里带标题和链接。
  */
 public class CollectActivity extends Activity {
 
-    private static final Pattern URL_RE = Pattern.compile("https?://[^\\s，。；、）)】\\]\"'<>]+");
+    private static final Pattern URL_RE =
+            Pattern.compile("https?://[^\\s，。；、）)】\\]\"'<>]+");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        handle(getIntent());
+        // 立刻结束这次转发：真正的处理放到后台线程，主线程不阻塞
+        final Intent intent = getIntent();
+        final Context app = getApplicationContext();
+        final String debug = Store.describeIntent(intent);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                handle(app, intent, debug);
+            }
+        }).start();
+        finish();
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        handle(intent);
-    }
-
-    private void handle(Intent intent) {
-        Store.debug(this, "Collect " + Store.describeIntent(intent));
-
-        final String url = extractUrl(intent);
-        if (url == null || url.isEmpty()) {
-            toast("没有识别到链接");
-            finish();
-            return;
-        }
-
-        final Article article = new Article(url, fallbackTitle(url), "", System.currentTimeMillis());
-        Store.save(this, article); // 先落盘，保证链接不丢
-        toast("已收藏链接，正在获取标题…");
-        finish();
-
-        // 后台补齐标题与公众号名
-        final Handler main = new Handler(Looper.getMainLooper());
+        final Context app = getApplicationContext();
+        final String debug = Store.describeIntent(intent);
         new Thread(new Runnable() {
             @Override
             public void run() {
-                Meta.Info info = Meta.fetch(url);
-                String title = info.title == null ? "" : info.title;
-                if (!title.isEmpty()) {
-                    article.title = title;
-                }
-                String account = info.account == null ? "" : info.account;
-                if (!account.isEmpty()) {
-                    article.account = account;
-                }
-                Store.save(CollectActivity.this, article);
-                Store.debug(CollectActivity.this, "saved " + article.file + " title=" + article.title);
-                main.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        toast("已收藏：" + article.title);
-                    }
-                });
+                handle(app, intent, debug);
             }
         }).start();
+        finish();
     }
 
-    /** 从 VIEW 的 data 或 SEND 的文本里取链接 */
-    private String extractUrl(Intent intent) {
-        if (intent == null) {
-            return null;
+    private void handle(Context app, Intent intent, String debug) {
+        Store.debug(app, "Collect " + debug);
+
+        String sharedText = extractText(intent);
+        String url = extractUrl(intent, sharedText);
+        if (url == null || url.isEmpty()) {
+            Store.debug(app, "ignore: no url in " + debug);
+            return;
         }
-        String data = intent.getDataString();
-        if (data != null && data.startsWith("http")) {
-            return data;
+        String title = Meta.guessTitle(sharedText);
+
+        Db db = Db.get(app);
+        Article existing = db.byUrl(url);
+        Article a = existing != null ? existing : new Article();
+        boolean isNew = existing == null;
+        a.url = url;
+        if (!title.isEmpty()) {
+            a.title = title;
+        } else if (a.title == null || a.title.isEmpty()) {
+            a.title = fallbackTitle(url);
         }
-        if (intent.getExtras() != null) {
-            Object t = intent.getExtras().get(Intent.EXTRA_TEXT);
-            if (t != null) {
-                Matcher m = URL_RE.matcher(String.valueOf(t));
-                if (m.find()) {
-                    return m.group();
-                }
+        a.account = a.account == null ? "" : a.account;
+        a.tags = a.tags == null ? "" : a.tags;
+        a.status = a.status == null || a.status.isEmpty() ? Article.STATUS_NEW : a.status;
+        a.source = "wechat";
+        a.collectedAt = isNew ? System.currentTimeMillis() : a.collectedAt;
+        if (isNew) {
+            a.fetchState = Article.FETCH_PENDING;
+        }
+        db.upsert(a);
+        Store.debug(app, "saved id=" + a.id + " title=" + a.title + " url=" + a.url);
+
+        // 立即导出（先存链接，后台补正文）
+        Store.exportMd(app, a);
+        Store.exportJsonl(app, db.all());
+
+        // 后台抓正文
+        Fetcher.fetchNow(app, a);
+        Store.debug(app, "fetched id=" + a.id + " title=" + a.title
+                + " account=" + a.account + " len=" + a.contentLength());
+    }
+
+    /** Intent 里的原始文本 */
+    private String extractText(Intent intent) {
+        if (intent == null || intent.getExtras() == null) {
+            return "";
+        }
+        Object t = intent.getExtras().get(Intent.EXTRA_TEXT);
+        if (t == null) {
+            t = intent.getExtras().get(Intent.EXTRA_SUBJECT);
+        }
+        return t == null ? "" : String.valueOf(t);
+    }
+
+    /** 取链接：优先 intent data，其次文本里的 URL */
+    private String extractUrl(Intent intent, String sharedText) {
+        if (intent != null) {
+            String data = intent.getDataString();
+            if (data != null && (data.startsWith("http://") || data.startsWith("https://"))) {
+                return data;
             }
-            Object s = intent.getExtras().get(Intent.EXTRA_SUBJECT);
-            if (s != null) {
-                Matcher m = URL_RE.matcher(String.valueOf(s));
-                if (m.find()) {
-                    return m.group();
-                }
-            }
+        }
+        Matcher m = URL_RE.matcher(sharedText == null ? "" : sharedText);
+        if (m.find()) {
+            return m.group();
         }
         return null;
     }
@@ -110,9 +128,5 @@ public class CollectActivity extends Activity {
         int slash = s.lastIndexOf('/');
         String tail = slash >= 0 && slash + 1 < s.length() ? s.substring(slash + 1) : s;
         return tail.isEmpty() ? url : tail;
-    }
-
-    private void toast(final String msg) {
-        Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
     }
 }
