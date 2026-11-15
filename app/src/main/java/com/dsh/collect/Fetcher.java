@@ -36,6 +36,13 @@ public final class Fetcher {
         // 同步导出
         List<Article> all = db.all();
         Store.exportAll(ctx, all);
+        for (Article x : all) {
+            if (x.id == a.id && x.exportName != null && !x.exportName.isEmpty()) {
+                db.updateExportName(x.id, x.exportName);
+                a.exportName = x.exportName;
+                break;
+            }
+        }
     }
 
     /** 异步抓取一篇 */
