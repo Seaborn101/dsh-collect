@@ -116,6 +116,23 @@ public class MainActivity extends Activity {
 
         buildChips();
         refresh();
+        // 自愈导入：App 被卸载重装后，从共享目录把素材读回来
+        final Context app = getApplicationContext();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final Import.Result r = Import.restore(app, db);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (r.added > 0) {
+                            toast("已从共享目录恢复 " + r.added + " 篇");
+                        }
+                        refresh();
+                    }
+                });
+            }
+        }).start();
         // 补抓还没正文的记录
         Fetcher.fetchPendingAsync(this);
     }
