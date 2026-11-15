@@ -35,6 +35,8 @@ public class Article {
     /** pending / ok / failed */
     public String fetchState = FETCH_PENDING;
     public String notes = "";
+    /** 导出到共享目录时用的文件名（稳定，标题变化时重命名而不是新建） */
+    public String exportName = "";
 
     public boolean isUnread() {
         return STATUS_NEW.equals(status);
