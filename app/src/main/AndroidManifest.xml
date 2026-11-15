@@ -56,6 +56,12 @@
             </intent-filter>
         </activity>
 
+        <!-- 设置：模型接入与提示词模板 -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="@string/settings_title" />
+
         <!-- 阅读：内嵌轻量浏览器 -->
         <activity
             android:name=".ReaderActivity"
