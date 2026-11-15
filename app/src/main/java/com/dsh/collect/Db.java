@@ -19,7 +19,7 @@ import java.util.List;
 public class Db extends SQLiteOpenHelper {
 
     private static final String NAME = "collect.db";
-    private static final int VERSION = 2;
+    private static final int VERSION = 3;
 
     private static final String T_ARTICLES = "articles";
 
@@ -68,6 +68,14 @@ public class Db extends SQLiteOpenHelper {
             } catch (Exception ignored) {
             }
         }
+        if (oldVersion < 3) {
+            try {
+                db.execSQL("ALTER TABLE " + T_ARTICLES + " ADD COLUMN layer TEXT DEFAULT 'L0'");
+                db.execSQL("ALTER TABLE " + T_ARTICLES + " ADD COLUMN author TEXT DEFAULT ''");
+                db.execSQL("ALTER TABLE " + T_ARTICLES + " ADD COLUMN published_at INTEGER DEFAULT 0");
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     // ---------------------------------------------------------------- 写入
@@ -94,6 +102,9 @@ public class Db extends SQLiteOpenHelper {
         v.put("fetch_state", a.fetchState);
         v.put("notes", a.notes);
         v.put("export_name", a.exportName);
+        v.put("layer", a.layer);
+        v.put("author", a.author);
+        v.put("published_at", a.publishedAt);
         // 空正文不覆盖已有内容（重复收集同一篇时保住抓到的正文）
         if (a.contentHtml == null || a.contentHtml.isEmpty()) {
             v.remove("content_html");
@@ -176,6 +187,25 @@ public class Db extends SQLiteOpenHelper {
         db.update(T_ARTICLES, v, "id=?", new String[]{String.valueOf(id)});
     }
 
+    /** 记录作者与发布时间 */
+    public synchronized void updateAuthor(long id, String author, long publishedAt) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put("author", author == null ? "" : author);
+        v.put("published_at", publishedAt);
+        v.put("updated_at", System.currentTimeMillis());
+        db.update(T_ARTICLES, v, "id=?", new String[]{String.valueOf(id)});
+    }
+
+    /** 记录加工层级（L0 素材 / L1 已加工 / L2 已综述），由 agent 侧回写 jsonl 后同步进来 */
+    public synchronized void updateLayer(long id, String layer) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put("layer", layer);
+        v.put("updated_at", System.currentTimeMillis());
+        db.update(T_ARTICLES, v, "id=?", new String[]{String.valueOf(id)});
+    }
+
     /** 记住导出文件名（标题变化时重命名而不是新建文件） */
     public synchronized void updateExportName(long id, String name) {
         SQLiteDatabase db = getWritableDatabase();
@@ -216,6 +246,12 @@ public class Db extends SQLiteOpenHelper {
         a.fetchState = str(c, "fetch_state");
         a.notes = str(c, "notes");
         a.exportName = str(c, "export_name");
+        a.layer = str(c, "layer");
+        if (a.layer.isEmpty()) {
+            a.layer = "L0";
+        }
+        a.author = str(c, "author");
+        a.publishedAt = c.getLong(c.getColumnIndexOrThrow("published_at"));
         return a;
     }
 
