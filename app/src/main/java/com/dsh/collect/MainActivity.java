@@ -45,6 +45,8 @@ public class MainActivity extends Activity {
     private String filterStatus = "";
     private boolean onlyStar = false;
     private String tagFilter = "";
+    /** "" 全部 / "L0" 待加工 / "L1" 已加工 */
+    private String filterLayer = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -114,6 +116,13 @@ public class MainActivity extends Activity {
             }
         });
 
+        findViewById(R.id.btn_settings).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
+            }
+        });
+
         buildChips();
         refresh();
         // 自愈导入：App 被卸载重装后，从共享目录把素材读回来
@@ -161,13 +170,14 @@ public class MainActivity extends Activity {
 
     private void buildChips() {
         chipBox.removeAllViews();
-        addChip("全部", "", false);
-        addChip("未读", Article.STATUS_NEW, false);
-        addChip("已归档", Article.STATUS_ARCHIVED, false);
-        addChip("星标", "", true);
+        addChip("全部", "", false, "");
+        addChip("待加工", "", false, "L0");
+        addChip("已加工", "", false, "L1");
+        addChip("星标", "", true, "");
+        addChip("已归档", Article.STATUS_ARCHIVED, false, "");
     }
 
-    private void addChip(String label, final String status, final boolean star) {
+    private void addChip(String label, final String status, final boolean star, final String layer) {
         TextView tv = new TextView(this);
         tv.setText(label);
         tv.setTextSize(13);
@@ -178,13 +188,15 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.rightMargin = dp(8);
         tv.setLayoutParams(lp);
-        final boolean active = (status == null || status.equals(filterStatus)) && (star == onlyStar);
+        final boolean active = status.equals(filterStatus) && (star == onlyStar)
+                && layer.equals(filterLayer);
         tv.setSelected(active);
         tv.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                filterStatus = status == null ? "" : status;
+                filterStatus = status;
                 onlyStar = star;
+                filterLayer = layer;
                 buildChips();
                 refresh();
             }
@@ -230,7 +242,7 @@ public class MainActivity extends Activity {
         syncLayers();
 
         String kw = search.getText() == null ? "" : search.getText().toString();
-        List<Article> all = db.query(kw, filterStatus, onlyStar, tagFilter);
+        List<Article> all = db.query(kw, filterStatus, onlyStar, tagFilter, filterLayer);
         adapter.items = all;
         adapter.notifyDataSetChanged();
         boolean isEmpty = all.isEmpty();
@@ -243,8 +255,8 @@ public class MainActivity extends Activity {
         }
 
         int total = db.count();
-        int unread = db.countStatus(Article.STATUS_NEW);
-        stats.setText(total + " 篇 · 未读 " + unread);
+        int done = db.countLayer("L1");
+        stats.setText(total + " 篇 · 已加工 " + done + " · 待加工 " + (total - done));
         buildTagChips(db.allTags());
     }
 
@@ -362,12 +374,10 @@ public class MainActivity extends Activity {
 
             String meta = (a.account.isEmpty() ? "未知公众号" : a.account)
                     + " · " + Store.readable(a.collectedAt);
-            if (a.isProcessed()) {
-                meta += " · 已加工 ✓";
-            } else if (Article.STATUS_ARCHIVED.equals(a.status)) {
+            if (Article.STATUS_ARCHIVED.equals(a.status)) {
                 meta += " · 已归档";
-            } else if (a.isUnread()) {
-                meta += " · 未读";
+            } else if (a.isProcessed()) {
+                meta += " · 已加工 ✓";
             }
             ((TextView) v.findViewById(R.id.meta)).setText(meta);
 
