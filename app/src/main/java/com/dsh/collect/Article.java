@@ -43,6 +43,8 @@ public class Article {
     public String author = "";
     /** 原文发布时间（毫秒） */
     public long publishedAt = 0L;
+    /** 人工信号：high / neutral / low */
+    public String signal = "";
 
     public boolean isUnread() {
         return STATUS_NEW.equals(status);
