@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/settings_title"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btn_close"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:text="@string/close"
+                android:textColor="@color/accent"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/settings_privacy"
+            android:textColor="@color/text_tertiary"
+            android:textSize="12sp" />
+
+        <!-- 模型接入 -->
+        <TextView
+            style="@style/SectionTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/section_model" />
+
+        <EditText
+            android:id="@+id/in_endpoint"
+            style="@style/FieldInput"
+            android:hint="@string/hint_endpoint" />
+
+        <EditText
+            android:id="@+id/in_key"
+            style="@style/FieldInput"
+            android:hint="@string/hint_key"
+            android:inputType="textPassword" />
+
+        <EditText
+            android:id="@+id/in_model"
+            style="@style/FieldInput"
+            android:hint="@string/hint_model" />
+
+        <EditText
+            android:id="@+id/in_temp"
+            style="@style/FieldInput"
+            android:hint="@string/hint_temp"
+            android:inputType="numberDecimal" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/card_bg"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <Switch
+                android:id="@+id/sw_auto"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/auto_process"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/auto_process_hint"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- 提示词模板 -->
+        <TextView
+            style="@style/SectionTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/section_prompt" />
+
+        <EditText
+            android:id="@+id/in_prompt"
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:background="@drawable/search_bg"
+            android:gravity="top"
+            android:hint="@string/hint_prompt"
+            android:inputType="textMultiLine"
+            android:padding="12dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_tertiary"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/btn_reset_prompt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:padding="6dp"
+            android:text="@string/reset_prompt"
+            android:textColor="@color/accent_blue"
+            android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/prompt_vars"
+            android:textColor="@color/text_tertiary"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/btn_primary"
+            android:text="@string/save"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/btn_test"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:padding="8dp"
+            android:text="@string/test_call"
+            android:textColor="@color/accent_blue"
+            android:textSize="14sp" />
+    </LinearLayout>
+</ScrollView>
