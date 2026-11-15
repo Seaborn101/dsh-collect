@@ -38,6 +38,26 @@ App 只做三件事：抓住链接、留住全文、记录你的判断信号。�
   - 需要「所有文件访问」权限
 - **阅读器**：内嵌 WebView + 离线正文双模式；顶栏 ⋯ 菜单（复制/导出/入队/已读/归档/星标/标签/删除）
 - **加工状态回读**：App 读 `articles.jsonl` 里的 `layer`，列表显示「已加工 ✓」
+- 版本号走 `0.0.x`（还没成品），`versionCode` 同步递增
+
+### 自动加工（v0.0.7+）
+
+设置页（顶栏 ⚙）可配置：
+
+| 项 | 说明 |
+|---|---|
+| API 地址 | OpenAI 兼容接口的**完整 URL**，如 `https://api.deepseek.com/v1/chat/completions` |
+| API Key | 只存在本机 SharedPreferences，不上传 |
+| 模型名 | 如 `deepseek-chat` |
+| 温度 | 默认 0.4 |
+| 提示词模板 | 可编辑，支持 `{{title}} {{account}} {{url}} {{signal}} {{content}}` |
+| 收藏后自动加工 | 打开后：收集 → 抓正文 → 调模型 → 写 L1 笔记到 Obsidian `微信素材库/L1/` |
+
+模型必须返回**严格 JSON**（`summary / key_points / takeaways / quote / tags / category / note`），
+解析端容忍 ```json 包裹与前后缀文字。
+
+抓取正文**不需要浏览器/爬虫框架**：`GET https://mp.weixin.qq.com/s/xxx` + 带 `MicroMessenger`
+的 UA 即可拿到全文（已实测 12K 字正文）。PRoot 侧的 `scripts/fetch_article.py` 作为补抓兜底。
 
 ## 构建
 
