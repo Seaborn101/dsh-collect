@@ -28,6 +28,8 @@ final class Meta {
         boolean ok = false;
         String title = "";
         String account = "";
+        String author = "";
+        long publishedAt = 0L;
         String text = "";
         String html = "";
         String error = "";
@@ -66,6 +68,8 @@ final class Meta {
             r.account = pickAccount(html);
             r.title = Html.decodeEntities(r.title).trim();
             r.account = Html.decodeEntities(r.account).trim();
+            r.author = Html.decodeEntities(pickAuthor(html)).trim();
+            r.publishedAt = pickPublished(html);
             r.text = Html.toText(Html.extractMain(html));
             r.ok = true;
             return r;
@@ -77,6 +81,52 @@ final class Meta {
                 conn.disconnect();
             }
         }
+    }
+
+    /** 原文作者（可选，拿不到就留空） */
+    private static String pickAuthor(String html) {
+        String[] patterns = {
+                "<meta\\s+name=\"author\"\\s+content=\"([^\"]*)\"",
+                "var\\s+author\\s*=\\s*['\"]([^'\"]*)['\"]",
+                "<span[^>]*id=\"js_author_name\"[^>]*>(.*?)</span>",
+                "<a[^>]*id=\"js_author_name\"[^>]*>(.*?)</a>",
+                "<strong[^>]*class=\"[^\"]*rich_media_meta[^\"]*\"[^>]*>(.*?)</strong>"
+        };
+        return firstMatch(html, patterns);
+    }
+
+    /** 原文发布时间（返回毫秒；拿不到返回 0） */
+    private static long pickPublished(String html) {
+        String ct = firstMatch(html, new String[]{"var\\s+ct\\s*=\\s*['\"]?(\\d{10})"});
+        if (!ct.isEmpty()) {
+            try {
+                return Long.parseLong(ct) * 1000L;
+            } catch (Exception ignored) {
+            }
+        }
+        String s = firstMatch(html, new String[]{
+                "<em[^>]*id=\"publish_time\"[^>]*>(.*?)</em>",
+                "<span[^>]*id=\"publish_time\"[^>]*>(.*?)</span>",
+                "var\\s+publish_time\\s*=\\s*['\"]([^'\"]*)['\"]"
+        });
+        if (s.isEmpty()) {
+            return 0L;
+        }
+        s = s.trim().replace("年", "-").replace("月", "-").replace("日", "");
+        String[] parts = s.split("[-/: ]");
+        try {
+            if (parts.length >= 3) {
+                int y = Integer.parseInt(parts[0]);
+                int m = Integer.parseInt(parts[1]);
+                int d = Integer.parseInt(parts[2]);
+                java.util.Calendar c = java.util.Calendar.getInstance();
+                c.clear();
+                c.set(y, m - 1, d);
+                return c.getTimeInMillis();
+            }
+        } catch (Exception ignored) {
+        }
+        return 0L;
     }
 
     /**
