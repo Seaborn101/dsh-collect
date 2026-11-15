@@ -192,6 +192,8 @@ public class MainActivity extends Activity {
         permBtn.setVisibility(ok ? View.GONE : View.VISIBLE);
         pathText.setText("导出目录：" + Store.collectedDir(this).getAbsolutePath());
 
+        syncLayers();
+
         String kw = search.getText() == null ? "" : search.getText().toString();
         List<Article> all = db.query(kw, filterStatus, onlyStar, tagFilter);
         adapter.items = all;
@@ -205,6 +207,48 @@ public class MainActivity extends Activity {
     }
 
     // ------------------------------------------------------------ 权限
+
+    /**
+     * 从共享目录的 articles.jsonl 读回 agent 的加工状态（L0/L1/L2），
+     * 这样 App 里能看出「这篇已经被 AI 加工过」。
+     */
+    private void syncLayers() {
+        if (!Store.canUseShared(this)) {
+            return;
+        }
+        java.io.File f = new java.io.File(Store.collectedDir(this), "articles.jsonl");
+        if (!f.exists()) {
+            return;
+        }
+        java.io.BufferedReader r = null;
+        try {
+            r = new java.io.BufferedReader(new java.io.InputStreamReader(
+                    new java.io.FileInputStream(f), "UTF-8"));
+            String line;
+            while ((line = r.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty() || line.indexOf("\"layer\"") < 0) {
+                    continue;
+                }
+                try {
+                    org.json.JSONObject o = new org.json.JSONObject(line);
+                    String url = o.optString("url", "");
+                    String layer = o.optString("layer", "");
+                    if (url.isEmpty() || layer.isEmpty()) {
+                        continue;
+                    }
+                    Article a = db.byUrl(url);
+                    if (a != null && !layer.equals(a.layer)) {
+                        db.updateLayer(a.id, layer);
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            Store.close(r);
+        }
+    }
 
     private void askPermission() {
         if (Build.VERSION.SDK_INT >= 30) {
@@ -276,7 +320,9 @@ public class MainActivity extends Activity {
 
             String meta = (a.account.isEmpty() ? "未知公众号" : a.account)
                     + " · " + Store.readable(a.collectedAt);
-            if (Article.STATUS_ARCHIVED.equals(a.status)) {
+            if (a.isProcessed()) {
+                meta += " · 已加工 ✓";
+            } else if (Article.STATUS_ARCHIVED.equals(a.status)) {
                 meta += " · 已归档";
             } else if (a.isUnread()) {
                 meta += " · 未读";
