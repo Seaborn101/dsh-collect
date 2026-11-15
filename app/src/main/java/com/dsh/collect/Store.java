@@ -35,6 +35,8 @@ public final class Store {
     public static final String ROOT_REL = "Download/DSH-Go";
     public static final String COLLECTED_REL = "collected";
     public static final String INBOX_REL = "inbox";
+    /** Obsidian 知识库根目录 */
+    public static final String VAULT_DIR = "/sdcard/Documents/Obsidian/微信素材库";
 
     private Store() {
     }
@@ -191,8 +193,13 @@ public final class Store {
             w.write("---\n");
             w.write("title: " + oneLine(a.title) + "\n");
             w.write("layer: " + oneLine(a.layer) + "\n");
+            if (a.category != null && !a.category.isEmpty()) {
+                w.write("category: " + oneLine(a.category) + "\n");
+            }
             w.write("account: " + oneLine(a.account) + "\n");
-            w.write("author: " + oneLine(a.author) + "\n");
+            if (a.author != null && !a.author.isEmpty()) {
+                w.write("author: " + oneLine(a.author) + "\n");
+            }
             w.write("url: " + oneLine(a.url) + "\n");
             w.write("source: " + oneLine(a.source) + "\n");
             w.write("collected: " + readable(a.collectedAt) + "\n");
@@ -204,9 +211,27 @@ public final class Store {
             w.write("summary: " + oneLine(a.summary) + "\n");
             w.write("---\n\n");
             w.write("# " + a.title + "\n\n");
-            w.write("> 来源：" + (a.account.isEmpty() ? "未知公众号" : a.account) + "\n");
-            w.write("> 链接：" + a.url + "\n");
-            w.write("> 收藏于 " + readable(a.collectedAt) + "\n\n");
+
+            boolean l1 = "L1".equals(a.layer)
+                    && (notEmpty(a.keyPoints) || notEmpty(a.takeaways) || notEmpty(a.summary));
+            if (l1) {
+                // 与 agent 侧 kb_pipeline 产出的 L1 格式保持一致
+                if (notEmpty(a.summary)) {
+                    w.write("> [!abstract] 一句话\n");
+                    w.write("> " + oneLine(a.summary) + "\n\n");
+                }
+                writeList(w, "要点", a.keyPoints);
+                writeList(w, "可复用的结论", a.takeaways);
+                if (notEmpty(a.quote)) {
+                    w.write("## 原文金句\n\n");
+                    w.write("> " + oneLine(a.quote) + "\n\n");
+                }
+                if (notEmpty(a.note)) {
+                    w.write("> [!note] 点评\n");
+                    w.write("> " + oneLine(a.note) + "\n\n");
+                }
+            }
+            w.write("## 原文\n\n");
             if (a.contentText != null && !a.contentText.isEmpty()) {
                 w.write(a.contentText);
                 w.write("\n\n");
@@ -217,6 +242,24 @@ public final class Store {
         } finally {
             close(w);
         }
+    }
+
+    private static boolean notEmpty(String s) {
+        return s != null && !s.trim().isEmpty();
+    }
+
+    private static void writeList(Writer w, String heading, String body) throws Exception {
+        if (!notEmpty(body)) {
+            return;
+        }
+        w.write("## " + heading + "\n\n");
+        for (String line : body.split("\n")) {
+            String t = line.trim();
+            if (!t.isEmpty()) {
+                w.write("- " + t + "\n");
+            }
+        }
+        w.write("\n");
     }
 
     /** 一行 JSON */
@@ -297,6 +340,38 @@ public final class Store {
             }
         }
         return n;
+    }
+
+    /**
+     * 把加工好的 L1 笔记写进 Obsidian 知识库（L1/&lt;分类&gt;/&lt;标题&gt;.md）。
+     *
+     * <p>写进库里，agent 侧的 duckdb 索引就能直接检索到，不用再搬一次。
+     */
+    public static File exportToVault(Context ctx, Article a) {
+        File base = new File(VAULT_DIR);
+        if (!base.exists() && !base.mkdirs()) {
+            return null;
+        }
+        String cat = (a.category == null || a.category.isEmpty()) ? "未分类" : a.category;
+        File dir = new File(base, "L1/" + cat);
+        if (!dir.exists() && !dir.mkdirs()) {
+            return null;
+        }
+        File f = new File(dir, titleSlug(a.title) + ".md");
+        writeMarkdown(f, a);
+        return f;
+    }
+
+    /** 文件名用的标题（去掉非法字符） */
+    public static String titleSlug(String s) {
+        if (s == null || s.trim().isEmpty()) {
+            return "untitled";
+        }
+        String t = s.trim().replaceAll("[\\\\/:*?\"<>|\\r\\n\\t]", "").trim();
+        if (t.length() > 60) {
+            t = t.substring(0, 60).trim();
+        }
+        return t.isEmpty() ? "untitled" : t;
     }
 
     /** 追加一行调试日志（记录 intent 长什么样，方便排查） */
