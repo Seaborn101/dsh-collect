@@ -19,7 +19,7 @@ import java.util.List;
 public class Db extends SQLiteOpenHelper {
 
     private static final String NAME = "collect.db";
-    private static final int VERSION = 4;
+    private static final int VERSION = 5;
 
     private static final String T_ARTICLES = "articles";
 
@@ -61,7 +61,12 @@ public class Db extends SQLiteOpenHelper {
                 // v3+
                 + "layer TEXT DEFAULT 'L0',"
                 + "author TEXT DEFAULT '',"
-                + "published_at INTEGER DEFAULT 0"
+                + "published_at INTEGER DEFAULT 0,"
+                // v5+：AI 加工产物
+                + "category TEXT DEFAULT '',"
+                + "key_points TEXT DEFAULT '',"
+                + "takeaways TEXT DEFAULT '',"
+                + "quote TEXT DEFAULT ''"
                 + ")");
         db.execSQL("CREATE INDEX idx_articles_collected ON " + T_ARTICLES + " (collected_at DESC)");
     }
@@ -78,6 +83,10 @@ public class Db extends SQLiteOpenHelper {
         addColumnIfMissing(db, "layer", "TEXT DEFAULT 'L0'");
         addColumnIfMissing(db, "author", "TEXT DEFAULT ''");
         addColumnIfMissing(db, "published_at", "INTEGER DEFAULT 0");
+        addColumnIfMissing(db, "category", "TEXT DEFAULT ''");
+        addColumnIfMissing(db, "key_points", "TEXT DEFAULT ''");
+        addColumnIfMissing(db, "takeaways", "TEXT DEFAULT ''");
+        addColumnIfMissing(db, "quote", "TEXT DEFAULT ''");
     }
 
     private void addColumnIfMissing(SQLiteDatabase db, String name, String type) {
@@ -134,6 +143,10 @@ public class Db extends SQLiteOpenHelper {
         v.put("layer", a.layer);
         v.put("author", a.author);
         v.put("published_at", a.publishedAt);
+        v.put("category", a.category);
+        v.put("key_points", a.keyPoints);
+        v.put("takeaways", a.takeaways);
+        v.put("quote", a.quote);
         // 空正文不覆盖已有内容（重复收集同一篇时保住抓到的正文）
         if (a.contentHtml == null || a.contentHtml.isEmpty()) {
             v.remove("content_html");
@@ -281,6 +294,10 @@ public class Db extends SQLiteOpenHelper {
         }
         a.author = str(c, "author");
         a.publishedAt = c.getLong(c.getColumnIndexOrThrow("published_at"));
+        a.category = str(c, "category");
+        a.keyPoints = str(c, "key_points");
+        a.takeaways = str(c, "takeaways");
+        a.quote = str(c, "quote");
         return a;
     }
 
@@ -295,15 +312,21 @@ public class Db extends SQLiteOpenHelper {
     /** 按条件查询，倒序 */
     public synchronized List<Article> query(String keyword, String status, boolean onlyStarred,
                                            String tag) {
+        return query(keyword, status, onlyStarred, tag, "");
+    }
+
+    /** layerFilter: "" 全部 / "L0" 待加工 / "L1" 已加工 */
+    public synchronized List<Article> query(String keyword, String status, boolean onlyStarred,
+                                            String tag, String layerFilter) {
         try {
-            return queryInternal(keyword, status, onlyStarred, tag);
+            return queryInternal(keyword, status, onlyStarred, tag, layerFilter);
         } catch (Exception e) {
             return new ArrayList<>();
         }
     }
 
     private List<Article> queryInternal(String keyword, String status, boolean onlyStarred,
-                                        String tag) {
+                                        String tag, String layerFilter) {
         StringBuilder sql = new StringBuilder("SELECT * FROM " + T_ARTICLES + " WHERE 1=1");
         List<String> args = new ArrayList<>();
         if (status != null && !status.isEmpty()) {
@@ -312,6 +335,10 @@ public class Db extends SQLiteOpenHelper {
         }
         if (onlyStarred) {
             sql.append(" AND starred=1");
+        }
+        if (layerFilter != null && !layerFilter.isEmpty()) {
+            sql.append(" AND layer=?");
+            args.add(layerFilter);
         }
         if (tag != null && !tag.isEmpty()) {
             sql.append(" AND (tags LIKE ? OR tags LIKE ? OR tags LIKE ?)");
@@ -418,6 +445,21 @@ public class Db extends SQLiteOpenHelper {
 
     public synchronized int count() {
         return scalar("SELECT COUNT(*) FROM " + T_ARTICLES);
+    }
+
+    /** 某一加工层级的数量 */
+    public synchronized int countLayer(String layer) {
+        try {
+            Cursor c = getReadableDatabase().rawQuery(
+                    "SELECT COUNT(*) FROM " + T_ARTICLES + " WHERE layer=?", new String[]{layer});
+            try {
+                return c.moveToFirst() ? c.getInt(0) : 0;
+            } finally {
+                c.close();
+            }
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     public synchronized int countStatus(String status) {
