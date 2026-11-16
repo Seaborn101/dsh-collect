@@ -39,6 +39,7 @@ public class MainActivity extends Activity {
     private TextView stats;
     private TextView empty;
     private TextView permBtn;
+    private TextView batchBtn;
     private TextView pathText;
     private Adapter adapter;
 
@@ -61,6 +62,7 @@ public class MainActivity extends Activity {
         stats = findViewById(R.id.stats);
         empty = findViewById(R.id.empty);
         permBtn = findViewById(R.id.perm_btn);
+        batchBtn = findViewById(R.id.batch_btn);
         pathText = findViewById(R.id.path_text);
 
         adapter = new Adapter();
@@ -116,6 +118,13 @@ public class MainActivity extends Activity {
             }
         });
 
+        batchBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                runBatch();
+            }
+        });
+
         findViewById(R.id.btn_settings).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -137,6 +146,68 @@ public class MainActivity extends Activity {
         refresh();
         // 授权后回到 App 也要能立刻导入（否则必须重启才生效）
         runImport();
+    }
+
+    private boolean batching = false;
+
+    /** 批量把所有没加工过的文章送去 AI 加工 */
+    private void runBatch() {
+        if (batching) {
+            return;
+        }
+        final List<Article> todo = db.query(null, "", false, "", "L0");
+        if (todo.isEmpty()) {
+            toast("没有待加工的文章");
+            return;
+        }
+        batching = true;
+        batchBtn.setEnabled(false);
+        final Context app = getApplicationContext();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final int[] counters = new int[]{0, 0}; // 0=成功 1=失败
+                for (int i = 0; i < todo.size(); i++) {
+                    final int idx = i;
+                    final long aid = todo.get(i).id;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            batchBtn.setText(getString(R.string.batch_running, idx + 1, todo.size()));
+                        }
+                    });
+                    try {
+                        Article before = Db.get(app).byId(aid);
+                        AutoPipeline.process(app, aid);
+                        Article after = Db.get(app).byId(aid);
+                        if (after != null && "L1".equals(after.layer)) {
+                            counters[0]++;
+                        } else {
+                            counters[1]++;
+                        }
+                        if (before != null && !before.title.equals(
+                                after == null ? "" : after.title)) {
+                            // 标题可能被 AI 修正过，忽略
+                        }
+                    } catch (Throwable t) {
+                        counters[1]++;
+                    }
+                    try {
+                        Thread.sleep(800L);
+                    } catch (InterruptedException ignored) {
+                    }
+                }
+                batching = false;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        batchBtn.setEnabled(true);
+                        toast(getString(R.string.batch_done, counters[0], counters[1]));
+                        refresh();
+                    }
+                });
+            }
+        }).start();
     }
 
     /** 是否有导入任务正在进行 */
@@ -257,6 +328,11 @@ public class MainActivity extends Activity {
         int total = db.count();
         int done = db.countLayer("L1");
         stats.setText(total + " 篇 · 已加工 " + done + " · 待加工 " + (total - done));
+        if (!batching) {
+            int pending = total - done;
+            batchBtn.setVisibility(pending > 0 ? View.VISIBLE : View.GONE);
+            batchBtn.setText(getString(R.string.batch_process, pending));
+        }
         buildTagChips(db.allTags());
     }
 
