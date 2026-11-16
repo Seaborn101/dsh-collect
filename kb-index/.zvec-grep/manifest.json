@@ -1,0 +1,47 @@
+{
+  "sourceRoot": {
+    "recordedPath": "/root/workspace/dsh-collect/kb-index",
+    "recordedUsername": "root"
+  },
+  "scan": {
+    "globs": [],
+    "included_formats": [],
+    "excluded_formats": [],
+    "include_hidden": false,
+    "follow_symlinks": false,
+    "max_depth": null,
+    "max_file_size_bytes": null,
+    "use_default_ignores": true,
+    "ignore_files": [],
+    "nested_git": true
+  },
+  "indexVersion": 2,
+  "storageGeneration": "981c7f91-988f-4872-8d4f-d3d9d329ff41",
+  "createdTime": 1794829106218,
+  "updatedTime": 1794829113108,
+  "index": {
+    "state": "enabled",
+    "descriptor": {
+      "defaultEmbeddingModel": {
+        "model": {
+          "provider": "local",
+          "name": "bekko-256-int8",
+          "contentKinds": [
+            "text",
+            "code"
+          ],
+          "maxBatchSize": 32
+        },
+        "dimension": 256,
+        "metric": "cosine",
+        "maxInputTokens": 32768,
+        "maxImageBytes": null
+      },
+      "embeddingRoutes": {},
+      "embeddingConfigs": {
+        "local/bekko-256-int8": {}
+      },
+      "graphIndexing": false
+    }
+  }
+}
