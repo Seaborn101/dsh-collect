@@ -40,6 +40,7 @@ public class MainActivity extends Activity {
     private TextView empty;
     private TextView permBtn;
     private TextView batchBtn;
+    private LinearLayout reviewRow;
     private TextView pathText;
     private Adapter adapter;
 
@@ -63,6 +64,7 @@ public class MainActivity extends Activity {
         empty = findViewById(R.id.empty);
         permBtn = findViewById(R.id.perm_btn);
         batchBtn = findViewById(R.id.batch_btn);
+        reviewRow = findViewById(R.id.review_row);
         pathText = findViewById(R.id.path_text);
 
         adapter = new Adapter();
@@ -239,6 +241,77 @@ public class MainActivity extends Activity {
 
     // ------------------------------------------------------------ 筛选
 
+    /** 回顾卡片：今日 / 本周 / 待加工 / 星标，点击可切换筛选 */
+    private void buildReview(int total, int done) {
+        reviewRow.removeAllViews();
+        long dayStart = startOfDay(System.currentTimeMillis());
+        long weekStart = dayStart - 6L * 24 * 3600 * 1000;
+        int today = db.countSince(dayStart);
+        int week = db.countSince(weekStart);
+        int pending = total - done;
+        int starred = db.countStarred();
+
+        addStat(reviewRow, "今日", "+" + today, "", false);
+        addStat(reviewRow, "本周", "+" + week, "", false);
+        addStat(reviewRow, "待加工", String.valueOf(pending), "L0", true);
+        addStat(reviewRow, "星标", String.valueOf(starred), "STAR", true);
+    }
+
+    private void addStat(LinearLayout box, String label, String value, String action,
+                         boolean clickable) {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(android.view.Gravity.CENTER);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        box.addView(col, lp);
+
+        TextView v = new TextView(this);
+        v.setText(value);
+        v.setTextSize(18);
+        v.setTextColor(getResources().getColor(R.color.text_primary));
+        v.setGravity(android.view.Gravity.CENTER);
+        col.addView(v);
+
+        TextView l = new TextView(this);
+        l.setText(label);
+        l.setTextSize(11);
+        l.setTextColor(getResources().getColor(R.color.text_tertiary));
+        l.setGravity(android.view.Gravity.CENTER);
+        col.addView(l);
+
+        if (clickable) {
+            col.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if ("L0".equals(action)) {
+                        filterStatus = "";
+                        onlyStar = false;
+                        filterLayer = "L0";
+                    } else if ("STAR".equals(action)) {
+                        filterStatus = "";
+                        onlyStar = true;
+                        filterLayer = "";
+                    }
+                    buildChips();
+                    refresh();
+                }
+            });
+            col.setBackgroundResource(R.drawable.chip_bg);
+            col.setPadding(dp(6), dp(6), dp(6), dp(6));
+        }
+    }
+
+    private long startOfDay(long ts) {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        c.setTimeInMillis(ts);
+        c.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        c.set(java.util.Calendar.MINUTE, 0);
+        c.set(java.util.Calendar.SECOND, 0);
+        c.set(java.util.Calendar.MILLISECOND, 0);
+        return c.getTimeInMillis();
+    }
+
     private void buildChips() {
         chipBox.removeAllViews();
         addChip("全部", "", false, "");
@@ -328,6 +401,7 @@ public class MainActivity extends Activity {
         int total = db.count();
         int done = db.countLayer("L1");
         stats.setText(total + " 篇 · 已加工 " + done + " · 待加工 " + (total - done));
+        buildReview(total, done);
         if (!batching) {
             int pending = total - done;
             batchBtn.setVisibility(pending > 0 ? View.VISIBLE : View.GONE);
