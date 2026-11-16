@@ -447,6 +447,46 @@ public class Db extends SQLiteOpenHelper {
         return scalar("SELECT COUNT(*) FROM " + T_ARTICLES);
     }
 
+    /** 某时间之后收集的数量 */
+    public synchronized int countSince(long ts) {
+        try {
+            Cursor c = getReadableDatabase().rawQuery(
+                    "SELECT COUNT(*) FROM " + T_ARTICLES + " WHERE collected_at>=?", new String[]{String.valueOf(ts)});
+            try {
+                return c.moveToFirst() ? c.getInt(0) : 0;
+            } finally {
+                c.close();
+            }
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /** 星标数量 */
+    public synchronized int countStarred() {
+        try {
+            Cursor c = getReadableDatabase().rawQuery(
+                    "SELECT COUNT(*) FROM " + T_ARTICLES + " WHERE starred=1", null);
+            try {
+                return c.moveToFirst() ? c.getInt(0) : 0;
+            } finally {
+                c.close();
+            }
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /** 手动修正标题与公众号 */
+    public synchronized void updateTitleAccount(long id, String title, String account) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues v = new ContentValues();
+        v.put("title", title);
+        v.put("account", account);
+        v.put("updated_at", System.currentTimeMillis());
+        db.update(T_ARTICLES, v, "id=?", new String[]{String.valueOf(id)});
+    }
+
     /** 某一加工层级的数量 */
     public synchronized int countLayer(String layer) {
         try {
