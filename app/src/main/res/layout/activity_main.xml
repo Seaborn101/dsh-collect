@@ -51,6 +51,18 @@
                 android:textSize="18sp" />
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/review_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/card_bg"
+            android:orientation="horizontal"
+            android:paddingLeft="6dp"
+            android:paddingTop="10dp"
+            android:paddingRight="6dp"
+            android:paddingBottom="10dp" />
+
         <EditText
             android:id="@+id/search"
             android:layout_width="match_parent"
