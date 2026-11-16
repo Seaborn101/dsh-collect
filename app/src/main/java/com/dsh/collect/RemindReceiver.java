@@ -8,22 +8,54 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 
-/** 每日回顾提醒：到点发通知，并安排明天的。 */
+import java.util.List;
+
+/**
+ * 每日回顾提醒：到点发通知，并安排明天的。
+ *
+ * <p>通知内容不只报数字——如果配了模型，会让模型从今天收集的文章里挑出最值得看的几篇，
+ * 直接写进通知里，点开就能知道「今天该看什么」。
+ */
 public class RemindReceiver extends BroadcastReceiver {
 
     @Override
-    public void onReceive(Context ctx, Intent intent) {
+    public void onReceive(final Context ctx, final Intent intent) {
         // 先安排下一次，保证连续
         Reminder.schedule(ctx);
 
+        final PendingResult pending = goAsync();
+        final Context app = ctx.getApplicationContext();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    postNotification(app);
+                } catch (Throwable ignored) {
+                } finally {
+                    pending.finish();
+                }
+            }
+        }).start();
+    }
+
+    private void postNotification(Context ctx) {
         Db db = Db.get(ctx);
         long startOfToday = startOfDay(System.currentTimeMillis());
-        int today = db.countSince(startOfToday);
-        if (today <= 0) {
+        List<Article> today = db.query(null, "", false, "", "");
+        int todayCount = 0;
+        List<Article> todayList = new java.util.ArrayList<>();
+        for (Article a : today) {
+            if (a.collectedAt >= startOfToday) {
+                todayCount++;
+                todayList.add(a);
+            }
+        }
+        if (todayCount <= 0) {
             return; // 今天没收集，就不打扰
         }
         int pending = db.count() - db.countLayer("L1");
-        String title = "今天收集了 " + today + " 篇";
+
+        String title = "今天收集了 " + todayCount + " 篇";
         String text = pending > 0 ? ("还有 " + pending + " 篇待加工 · 点开继续")
                 : "都已加工完，点开回顾一下";
 
@@ -49,8 +81,38 @@ public class RemindReceiver extends BroadcastReceiver {
                 .setContentText(text)
                 .setAutoCancel(true)
                 .setContentIntent(pi);
+
+        // 先把基础通知发出去，保证用户一定看得到（广播窗口约 10 秒，不能等模型）
         try {
             nm.notify(3001, b.build());
+        } catch (Exception ignored) {
+            return;
+        }
+
+        // 再让模型挑「今天最值得看的几篇」，拿到后更新同一条通知
+        List<String> picks = Reminder.aiPicks(ctx, todayList);
+        if (picks.isEmpty()) {
+            return;
+        }
+        StringBuilder big = new StringBuilder();
+        big.append(text).append("\n\n今日精选：");
+        for (String p : picks) {
+            big.append("\n").append(p);
+        }
+        Notification.Builder b2;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            b2 = new Notification.Builder(ctx, Reminder.CHANNEL_ID);
+        } else {
+            b2 = new Notification.Builder(ctx);
+        }
+        b2.setSmallIcon(android.R.drawable.ic_menu_recent_history)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setStyle(new Notification.BigTextStyle().bigText(big.toString()))
+                .setAutoCancel(true)
+                .setContentIntent(pi);
+        try {
+            nm.notify(3001, b2.build());
         } catch (Exception ignored) {
         }
     }
