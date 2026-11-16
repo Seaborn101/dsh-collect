@@ -17,14 +17,13 @@ final class Actions {
 
     static void show(final Activity act, final Article a, final Runnable onChanged) {
         final Db db = Db.get(act);
-        final boolean unread = a.isUnread();
         final boolean archived = Article.STATUS_ARCHIVED.equals(a.status);
 
         String[] items = {
                 "复制链接",
+                "用 AI 加工这篇",
                 "导出 Markdown",
                 "加入待整理队列",
-                unread ? "标记已读" : "标记未读",
                 archived ? "取消归档" : "归档",
                 a.starred ? "取消星标" : "设为星标",
                 "编辑标签",
@@ -41,16 +40,16 @@ final class Actions {
                                 copy(act, a.url);
                                 break;
                             case 1:
+                                toast(act, "开始 AI 加工…");
+                                AutoPipeline.processAsync(act, a.id);
+                                break;
+                            case 2:
                                 java.io.File f = Store.exportMd(act, a);
                                 toast(act, "已导出：" + f.getAbsolutePath());
                                 break;
-                            case 2:
+                            case 3:
                                 java.io.File f2 = Store.addToInbox(act, a);
                                 toast(act, "已加入队列：" + f2.getAbsolutePath());
-                                break;
-                            case 3:
-                                db.updateStatus(a.id, unread ? Article.STATUS_READ : Article.STATUS_NEW);
-                                a.status = unread ? Article.STATUS_READ : Article.STATUS_NEW;
                                 break;
                             case 4:
                                 db.updateStatus(a.id, archived ? Article.STATUS_READ : Article.STATUS_ARCHIVED);
