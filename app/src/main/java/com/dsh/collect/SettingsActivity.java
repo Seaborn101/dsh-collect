@@ -17,7 +17,10 @@ public class SettingsActivity extends Activity {
     private EditText model;
     private EditText temp;
     private EditText prompt;
+    private EditText promptL2;
     private Switch autoSwitch;
+    private Switch remindSwitch;
+    private TextView remindTime;
     private TextView status;
 
     @Override
@@ -30,7 +33,10 @@ public class SettingsActivity extends Activity {
         model = findViewById(R.id.in_model);
         temp = findViewById(R.id.in_temp);
         prompt = findViewById(R.id.in_prompt);
+        promptL2 = findViewById(R.id.in_prompt_l2);
         autoSwitch = findViewById(R.id.sw_auto);
+        remindSwitch = findViewById(R.id.sw_remind);
+        remindTime = findViewById(R.id.btn_remind_time);
         status = findViewById(R.id.status_text);
 
         Settings s = Settings.load(this);
@@ -40,6 +46,9 @@ public class SettingsActivity extends Activity {
         temp.setText(String.valueOf(s.temperature));
         prompt.setText(s.prompt);
         autoSwitch.setChecked(s.autoProcess);
+        promptL2.setText(s.promptL2);
+        remindSwitch.setChecked(s.autoRemind);
+        remindTime.setText(Reminder.timeText(s.remindHour, s.remindMinute));
         status.setText(s.lastMessage.isEmpty() ? getString(R.string.no_run_yet) : s.lastMessage);
 
         findViewById(R.id.btn_close).setOnClickListener(new View.OnClickListener() {
@@ -52,6 +61,18 @@ public class SettingsActivity extends Activity {
             @Override
             public void onClick(View v) {
                 prompt.setText(Settings.DEFAULT_PROMPT);
+            }
+        });
+        findViewById(R.id.btn_reset_prompt_l2).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                promptL2.setText(Settings.DEFAULT_PROMPT_L2);
+            }
+        });
+        remindTime.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pickTime();
             }
         });
         ((Button) findViewById(R.id.btn_save)).setOnClickListener(new View.OnClickListener() {
@@ -82,8 +103,11 @@ public class SettingsActivity extends Activity {
             s.temperature = 0.4f;
         }
         s.prompt = prompt.getText().toString();
+        s.promptL2 = promptL2.getText().toString();
         s.autoProcess = autoSwitch.isChecked();
+        s.autoRemind = remindSwitch.isChecked();
         s.save(this);
+        Reminder.schedule(this);
     }
 
     /** 用一个极短的请求测试连通性 */
@@ -117,6 +141,22 @@ public class SettingsActivity extends Activity {
                 });
             }
         }).start();
+    }
+
+    /** 选提醒时间 */
+    private void pickTime() {
+        final Settings s = Settings.load(this);
+        android.app.TimePickerDialog dlg = new android.app.TimePickerDialog(this,
+                new android.app.TimePickerDialog.OnTimeSetListener() {
+                    @Override
+                    public void onTimeSet(android.widget.TimePicker view, int hour, int minute) {
+                        s.remindHour = hour;
+                        s.remindMinute = minute;
+                        s.save(SettingsActivity.this);
+                        remindTime.setText(Reminder.timeText(hour, minute));
+                    }
+                }, s.remindHour, s.remindMinute, true);
+        dlg.show();
     }
 
     private void toast(String s) {

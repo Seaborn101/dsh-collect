@@ -3,6 +3,8 @@ package com.dsh.collect;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.List;
+
 /**
  * App 配置：模型接入 + 提示词模板。
  *
@@ -22,6 +24,10 @@ public final class Settings {
     private static final String K_PROMPT = "prompt";
     private static final String K_AUTO = "auto_process";
     private static final String K_LAST = "last_message";
+    private static final String K_PROMPT_L2 = "prompt_l2";
+    private static final String K_REMIND = "remind";
+    private static final String K_REMIND_H = "remind_hour";
+    private static final String K_REMIND_M = "remind_minute";
 
     /** 默认：OpenAI 兼容接口的完整地址 */
     public static final String DEFAULT_ENDPOINT = "https://api.deepseek.com/v1/chat/completions";
@@ -50,6 +56,30 @@ public final class Settings {
             + "正文：\n"
             + "{{content}}";
 
+    /** 默认综述提示词（多篇 → 一篇） */
+    public static final String DEFAULT_PROMPT_L2 =
+            "你在帮一个人整理个人知识库。下面是同一主题下的多篇笔记，请做**跨篇归纳**，"
+            + "输出**严格的 JSON**，不要解释文字，不要 Markdown 代码块。\n"
+            + "\n"
+            + "JSON 字段：\n"
+            + "{\n"
+            + "  \"title\": \"主题标题\",\n"
+            + "  \"summary\": \"这批文章合起来说明白了什么（2-4句）\",\n"
+            + "  \"consensus\": [\"多篇都指向的共识\"],\n"
+            + "  \"tensions\": [\"互相矛盾或前提不同的地方\"],\n"
+            + "  \"playbook\": [\"看完能直接照做的步骤或检查清单\"],\n"
+            + "  \"open_questions\": [\"这批文章还没回答的问题\"],\n"
+            + "  \"tags\": [\"主题标签\"]\n"
+            + "}\n"
+            + "\n"
+            + "要求：只写这批材料支持的结论；不要为了凑数编造；"
+            + "playbook 必须是可执行的动作，而不是感想。\n"
+            + "\n"
+            + "主题分类：{{category}}\n"
+            + "笔记数：{{count}}\n"
+            + "\n"
+            + "{{content}}";
+
     public static Settings load(Context ctx) {
         SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         Settings s = new Settings();
@@ -60,6 +90,10 @@ public final class Settings {
         s.prompt = p.getString(K_PROMPT, DEFAULT_PROMPT);
         s.autoProcess = p.getBoolean(K_AUTO, false);
         s.lastMessage = p.getString(K_LAST, "");
+        s.promptL2 = p.getString(K_PROMPT_L2, DEFAULT_PROMPT_L2);
+        s.autoRemind = p.getBoolean(K_REMIND, true);
+        s.remindHour = p.getInt(K_REMIND_H, 21);
+        s.remindMinute = p.getInt(K_REMIND_M, 0);
         return s;
     }
 
@@ -73,6 +107,10 @@ public final class Settings {
                 .putString(K_PROMPT, prompt)
                 .putBoolean(K_AUTO, autoProcess)
                 .putString(K_LAST, lastMessage)
+                .putString(K_PROMPT_L2, promptL2)
+                .putBoolean(K_REMIND, autoRemind)
+                .putInt(K_REMIND_H, remindHour)
+                .putInt(K_REMIND_M, remindMinute)
                 .apply();
     }
 
@@ -109,4 +147,29 @@ public final class Settings {
     public String prompt = DEFAULT_PROMPT;
     public boolean autoProcess = false;
     public String lastMessage = "";
+    public String promptL2 = DEFAULT_PROMPT_L2;
+    public boolean autoRemind = true;
+    public int remindHour = 21;
+    public int remindMinute = 0;
+
+    /** 用 L2 模板生成 prompt */
+    public String buildL2Prompt(String category, List<Article> notes) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < notes.size(); i++) {
+            Article a = notes.get(i);
+            sb.append("### ").append(i + 1).append(". ").append(a.title).append("\n");
+            sb.append("公众号：").append(a.account).append("\n");
+            if (!a.summary.isEmpty()) {
+                sb.append("摘要：").append(a.summary).append("\n");
+            }
+            if (a.contentText != null && !a.contentText.trim().isEmpty()) {
+                sb.append("笔记：\n").append(a.contentText.trim()).append("\n");
+            }
+            sb.append("\n");
+        }
+        String t = promptL2 == null || promptL2.isEmpty() ? DEFAULT_PROMPT_L2 : promptL2;
+        return t.replace("{{category}}", category == null ? "" : category)
+                .replace("{{count}}", String.valueOf(notes.size()))
+                .replace("{{content}}", sb.toString());
+    }
 }

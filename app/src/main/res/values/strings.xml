@@ -49,6 +49,16 @@
     <string name="test_ok">接口正常 ✓</string>
     <string name="test_fail">调用失败：</string>
     <string name="settings_entry">设置</string>
+    <string name="section_prompt_l2">综述提示词模板（多篇 → 一篇）</string>
+    <string name="hint_prompt_l2">把同一主题的多篇笔记交给模型做跨篇归纳</string>
+    <string name="section_remind">每日回顾</string>
+    <string name="daily_remind">每日回顾提醒</string>
+    <string name="daily_remind_hint">每天这个时间提醒一次：今天收了 N 篇，还有几篇待加工</string>
+    <string name="remind_time">提醒时间</string>
+    <string name="make_review">生成主题综述</string>
+    <string name="review_done">综述已生成：%s</string>
+    <string name="review_failed">综述失败：%s</string>
+    <string name="need_two_notes">至少要 2 篇才能综述</string>
     <string name="batch_process">批量加工 %d 篇</string>
     <string name="batch_running">加工中 %d/%d</string>
     <string name="batch_done">批量加工完成：成功 %d 篇，失败 %d 篇</string>

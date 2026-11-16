@@ -41,6 +41,7 @@ public class MainActivity extends Activity {
     private TextView permBtn;
     private TextView batchBtn;
     private LinearLayout reviewRow;
+    private TextView reviewBtn;
     private TextView pathText;
     private Adapter adapter;
 
@@ -65,6 +66,7 @@ public class MainActivity extends Activity {
         permBtn = findViewById(R.id.perm_btn);
         batchBtn = findViewById(R.id.batch_btn);
         reviewRow = findViewById(R.id.review_row);
+        reviewBtn = findViewById(R.id.btn_review);
         pathText = findViewById(R.id.path_text);
 
         adapter = new Adapter();
@@ -120,6 +122,13 @@ public class MainActivity extends Activity {
             }
         });
 
+        reviewBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pickCategoryForReview();
+            }
+        });
+
         batchBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -133,6 +142,19 @@ public class MainActivity extends Activity {
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             }
         });
+
+        // 每日回顾提醒
+        Reminder.ensureChannel(this);
+        Reminder.schedule(this);
+        askNotificationPermission();
+
+        // 从通知点进来时直接切到「待加工」
+        String want = getIntent() == null ? null : getIntent().getStringExtra("filter");
+        if ("L0".equals(want)) {
+            filterStatus = "";
+            onlyStar = false;
+            filterLayer = "L0";
+        }
 
         buildChips();
         refresh();
@@ -148,6 +170,64 @@ public class MainActivity extends Activity {
         refresh();
         // 授权后回到 App 也要能立刻导入（否则必须重启才生效）
         runImport();
+    }
+
+    /** 选一个分类，生成主题综述 */
+    private void pickCategoryForReview() {
+        final java.util.Map<String, Integer> cats = L2Pipeline.categories(this);
+        if (cats.isEmpty()) {
+            toast("还没有 L1 笔记，先加工几篇再综述");
+            return;
+        }
+        final String[] names = cats.keySet().toArray(new String[0]);
+        String[] labels = new String[names.length];
+        for (int i = 0; i < names.length; i++) {
+            labels[i] = names[i] + "（" + cats.get(names[i]) + " 篇）";
+        }
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.make_review)
+                .setItems(labels, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        startReview(names[which]);
+                    }
+                })
+                .show();
+    }
+
+    private void startReview(final String category) {
+        reviewBtn.setEnabled(false);
+        toast("正在生成综述…");
+        L2Pipeline.generateAsync(this, category, new L2Pipeline.Callback() {
+            @Override
+            public void done(final L2Pipeline.Result r) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        reviewBtn.setEnabled(true);
+                        if (r.ok) {
+                            toast(getString(R.string.review_done, r.path));
+                        } else {
+                            toast(getString(R.string.review_failed, r.error));
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    /** Android 13+ 需要运行时申请通知权限 */
+    private void askNotificationPermission() {
+        if (Build.VERSION.SDK_INT < 33) {
+            return;
+        }
+        try {
+            if (checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 3301);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private boolean batching = false;
@@ -402,6 +482,7 @@ public class MainActivity extends Activity {
         int done = db.countLayer("L1");
         stats.setText(total + " 篇 · 已加工 " + done + " · 待加工 " + (total - done));
         buildReview(total, done);
+        reviewBtn.setVisibility(L2Pipeline.categories(this).isEmpty() ? View.GONE : View.VISIBLE);
         if (!batching) {
             int pending = total - done;
             batchBtn.setVisibility(pending > 0 ? View.VISIBLE : View.GONE);

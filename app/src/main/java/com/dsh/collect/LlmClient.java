@@ -28,6 +28,8 @@ public final class LlmClient {
         Article article = null;
         /** 原始返回（调试用） */
         String raw = "";
+        /** 模型返回的正文内容 */
+        String content = "";
     }
 
     /**
@@ -113,6 +115,7 @@ public final class LlmClient {
                 r.error = "返回内容为空";
                 return r;
             }
+            r.content = content;
             Article a = parseArticle(content);
             if (a == null) {
                 r.error = "无法解析模型返回的 JSON：" + clip(content, 160);
@@ -128,6 +131,31 @@ public final class LlmClient {
             if (conn != null) {
                 conn.disconnect();
             }
+        }
+    }
+
+    /** 从模型返回里提取 JSON 对象（容忍 ```json 包裹与前后废话） */
+    static JSONObject parseJson(String content) {
+        if (content == null) {
+            return null;
+        }
+        String s = content.trim();
+        if (s.startsWith("```")) {
+            int i = s.indexOf('\n');
+            int j = s.lastIndexOf("```");
+            if (i > 0 && j > i) {
+                s = s.substring(i + 1, j).trim();
+            }
+        }
+        int a = s.indexOf('{');
+        int b = s.lastIndexOf('}');
+        if (a < 0 || b <= a) {
+            return null;
+        }
+        try {
+            return new JSONObject(s.substring(a, b + 1));
+        } catch (Exception e) {
+            return null;
         }
     }
 
