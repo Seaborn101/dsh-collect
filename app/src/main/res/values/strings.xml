@@ -19,6 +19,8 @@
     <string name="delete">删除</string>
     <string name="edit_tags">编辑标签</string>
     <string name="note_mode">笔记版</string>
+    <string name="open_in_obsidian">在 Obsidian 打开</string>
+    <string name="no_note_yet">还没有生成知识库笔记</string>
     <string name="online_mode">网页版</string>
     <string name="no_offline">正文还没抓到，稍后再试</string>
     <string name="exported">已导出到 %s</string>
