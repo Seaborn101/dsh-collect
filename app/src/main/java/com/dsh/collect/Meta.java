@@ -20,6 +20,16 @@ final class Meta {
             + "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/124.0.0.0 "
             + "Mobile Safari/537.36 MicroMessenger/8.0.49";
 
+    /**
+     * 普通移动浏览器 UA（WebView 阅读用）。
+     *
+     * <p>微信文章页在 MicroMessenger UA 下会走另一套渲染，头像等资源不显示；
+     * 用普通浏览器 UA 才是网页版排版。
+     */
+    static final String BROWSER_UA = "Mozilla/5.0 (Linux; Android 14; V2323A Build/UP1A) "
+            + "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/124.0.0.0 "
+            + "Mobile Safari/537.36";
+
     private Meta() {
     }
 
