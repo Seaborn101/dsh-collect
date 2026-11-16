@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.dsh.collect.ShellLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/shell"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg">
+
+    <FrameLayout
+        android:id="@+id/content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <View
+        android:id="@+id/scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:visibility="visible" />
+
+    <LinearLayout
+        android:id="@+id/drawer"
+        android:layout_width="300dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="@color/surface"
+        android:orientation="vertical"
+        android:paddingTop="24dp"
+        android:paddingBottom="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="20dp"
+            android:paddingRight="20dp"
+            android:paddingBottom="4dp"
+            android:text="@string/app_name"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/drawer_sub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="20dp"
+            android:paddingRight="20dp"
+            android:paddingBottom="14dp"
+            android:textColor="@color/text_tertiary"
+            android:textSize="12sp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider" />
+
+        <TextView
+            android:id="@+id/nav_materials"
+            style="@style/NavItem"
+            android:text="@string/nav_materials" />
+
+        <TextView
+            android:id="@+id/nav_picks"
+            style="@style/NavItem"
+            android:text="@string/nav_picks" />
+
+        <TextView
+            android:id="@+id/nav_l2"
+            style="@style/NavItem"
+            android:text="@string/nav_l2" />
+
+        <TextView
+            android:id="@+id/nav_stats"
+            style="@style/NavItem"
+            android:text="@string/nav_stats" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="10dp"
+            android:background="@color/divider" />
+
+        <TextView
+            android:id="@+id/nav_settings"
+            style="@style/NavItem"
+            android:text="@string/nav_settings" />
+
+        <TextView
+            android:id="@+id/nav_help"
+            style="@style/NavItem"
+            android:text="@string/nav_help" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/drawer_path"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingLeft="20dp"
+            android:paddingRight="16dp"
+            android:textColor="@color/text_tertiary"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/drawer_version"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:paddingLeft="20dp"
+            android:paddingRight="16dp"
+            android:textColor="@color/text_tertiary"
+            android:textSize="10sp" />
+    </LinearLayout>
+</com.dsh.collect.ShellLayout>

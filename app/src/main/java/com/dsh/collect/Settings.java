@@ -112,6 +112,11 @@ public final class Settings {
                 .putInt(K_REMIND_H, remindHour)
                 .putInt(K_REMIND_M, remindMinute)
                 .apply();
+        // 额外写一份到共享目录：卸载重装后还能恢复设置
+        try {
+            Backup.saveToShared(ctx, this);
+        } catch (Throwable ignored) {
+        }
     }
 
     public void setLastMessage(Context ctx, String msg) {

@@ -83,6 +83,17 @@ public class SettingsActivity extends Activity {
                 finish();
             }
         });
+        findViewById(R.id.btn_export).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                java.io.File f = Backup.exportBackup(SettingsActivity.this);
+                if (f == null) {
+                    toast(getString(R.string.backup_fail));
+                } else {
+                    toast(getString(R.string.backup_done, f.getAbsolutePath()));
+                }
+            }
+        });
         findViewById(R.id.btn_test).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

@@ -20,6 +20,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -42,6 +43,18 @@ public class MainActivity extends Activity {
     private TextView batchBtn;
     private LinearLayout reviewRow;
     private TextView reviewBtn;
+    private ShellLayout shell;
+    private FrameLayout content;
+    private View materialsView;
+    private PicksPage picksPage;
+    private L2Page l2Page;
+    private StatsPage statsPage;
+    private String currentPage = PAGE_MATERIALS;
+
+    private static final String PAGE_MATERIALS = "materials";
+    private static final String PAGE_PICKS = "picks";
+    private static final String PAGE_L2 = "l2";
+    private static final String PAGE_STATS = "stats";
     private TextView pathText;
     private Adapter adapter;
 
@@ -54,7 +67,23 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.shell);
+        shell = findViewById(R.id.shell);
+        content = findViewById(R.id.content);
+        // 素材页（原来的主界面）作为第一个页面塞进内容区
+        materialsView = LayoutInflater.from(this).inflate(R.layout.activity_main, content, false);
+        content.addView(materialsView);
+        shell.bindDrawer(findViewById(R.id.drawer), findViewById(R.id.scrim));
+        shell.setHost(new ShellLayout.Host() {
+            @Override
+            public void onSwipeUp() {
+                showPage(PAGE_PICKS);
+            }
+
+            @Override
+            public void onDrawerStateChanged(boolean open) {
+            }
+        });
         db = Db.get(this);
 
         list = findViewById(R.id.list);
@@ -129,6 +158,52 @@ public class MainActivity extends Activity {
             }
         });
 
+        findViewById(R.id.btn_menu).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                shell.openDrawer();
+            }
+        });
+
+        findViewById(R.id.nav_materials).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showPage(PAGE_MATERIALS);
+            }
+        });
+        findViewById(R.id.nav_picks).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showPage(PAGE_PICKS);
+            }
+        });
+        findViewById(R.id.nav_l2).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showPage(PAGE_L2);
+            }
+        });
+        findViewById(R.id.nav_stats).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showPage(PAGE_STATS);
+            }
+        });
+        findViewById(R.id.nav_settings).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                shell.closeDrawer();
+                startActivity(new Intent(MainActivity.this, SettingsActivity.class));
+            }
+        });
+        findViewById(R.id.nav_help).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                shell.closeDrawer();
+                showHelp();
+            }
+        });
+
         batchBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -142,6 +217,17 @@ public class MainActivity extends Activity {
                 startActivity(new Intent(MainActivity.this, SettingsActivity.class));
             }
         });
+
+        // 卸载重装后：设置从共享目录恢复
+        com.dsh.collect.Settings st = com.dsh.collect.Settings.load(this);
+        if (!st.isConfigured()) {
+            try {
+                if (Backup.restoreFromShared(this, st)) {
+                    toast("已从共享目录恢复设置");
+                }
+            } catch (Throwable ignored) {
+            }
+        }
 
         // 每日回顾提醒
         Reminder.ensureChannel(this);
@@ -172,8 +258,70 @@ public class MainActivity extends Activity {
         runImport();
     }
 
+    /** 切换页面 */
+    private void showPage(String page) {
+        if (shell != null && shell.isDrawerOpen()) {
+            shell.closeDrawer();
+        }
+        if (page.equals(currentPage)) {
+            return;
+        }
+        content.removeAllViews();
+        if (page.equals(PAGE_PICKS)) {
+            if (picksPage == null) {
+                picksPage = new PicksPage(this, content);
+            }
+            content.addView(picksPage.getRoot());
+            picksPage.refresh(false);
+        } else if (page.equals(PAGE_L2)) {
+            if (l2Page == null) {
+                l2Page = new L2Page(this, content);
+            }
+            content.addView(l2Page.getRoot());
+            l2Page.refresh();
+        } else if (page.equals(PAGE_STATS)) {
+            if (statsPage == null) {
+                statsPage = new StatsPage(this, content);
+            }
+            content.addView(statsPage.getRoot());
+            statsPage.refresh();
+        } else {
+            content.addView(materialsView);
+            refresh();
+        }
+        currentPage = page;
+        updateDrawerMeta();
+    }
+
+    /** 抽屉里的副标题与路径 */
+    private void updateDrawerMeta() {
+        try {
+            TextView sub = findViewById(R.id.drawer_sub);
+            sub.setText(db.count() + " 篇素材 · " + db.countLayer("L1") + " 篇已加工");
+            TextView path = findViewById(R.id.drawer_path);
+            path.setText(Store.collectedDir(this).getAbsolutePath());
+            TextView ver = findViewById(R.id.drawer_version);
+            ver.setText("DSH 收集 v0.2.0 · 知识库 " + Store.VAULT_DIR);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void showHelp() {
+        String msg = "① 在微信里打开文章 → 右上角「…」→ 用DSH收集打开\n"
+                + "② App 静默收藏：抓全文 → 调模型写 L1 笔记 → 存进 Obsidian 微信素材库/L1\n"
+                + "③ 攒够了用「主题综述」做跨篇归纳 → L2\n"
+                + "④ 每天 21:00 提醒回顾，通知里直接给「今日精选」\n\n"
+                + "手势：左边缘右滑开抽屉 · 抽屉上滑关 · 内容区上滑到今日精选\n"
+                + "备份：设置里「导出备份」，设置本身也写在共享目录，卸载重装不丢";
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.nav_help)
+                .setMessage(msg)
+                .setPositiveButton("知道了", null)
+                .show();
+    }
+
     /** 选一个分类，生成主题综述 */
-    private void pickCategoryForReview() {
+    void pickCategoryForReview() {
         final java.util.Map<String, Integer> cats = L2Pipeline.categories(this);
         if (cats.isEmpty()) {
             toast("还没有 L1 笔记，先加工几篇再综述");
@@ -455,6 +603,10 @@ public class MainActivity extends Activity {
     }
 
     private void refresh() {
+        // 素材页被切走时它的 View 已脱离视图树，findViewById 会拿到 null
+        if (materialsView == null || materialsView.getParent() == null) {
+            return;
+        }
         boolean ok = Store.canUseShared(this);
         permBtn.setVisibility(ok ? View.GONE : View.VISIBLE);
         if (!ok) {
@@ -482,6 +634,7 @@ public class MainActivity extends Activity {
         int done = db.countLayer("L1");
         stats.setText(total + " 篇 · 已加工 " + done + " · 待加工 " + (total - done));
         buildReview(total, done);
+        updateDrawerMeta();
         reviewBtn.setVisibility(L2Pipeline.categories(this).isEmpty() ? View.GONE : View.VISIBLE);
         if (!batching) {
             int pending = total - done;
@@ -533,6 +686,19 @@ public class MainActivity extends Activity {
         } finally {
             Store.close(r);
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (shell != null && shell.isDrawerOpen()) {
+            shell.closeDrawer();
+            return;
+        }
+        if (!PAGE_MATERIALS.equals(currentPage)) {
+            showPage(PAGE_MATERIALS);
+            return;
+        }
+        super.onBackPressed();
     }
 
     private void askPermission() {

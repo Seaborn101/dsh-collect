@@ -20,4 +20,17 @@
         <item name="android:textSize">14sp</item>
         <item name="android:maxLines">1</item>
     </style>
+
+    <!-- 抽屉导航项 -->
+    <style name="NavItem">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingLeft">20dp</item>
+        <item name="android:paddingTop">14dp</item>
+        <item name="android:paddingRight">20dp</item>
+        <item name="android:paddingBottom">14dp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:background">?android:attr/selectableItemBackground</item>
+    </style>
 </resources>

@@ -242,6 +242,16 @@
             android:textSize="12sp" />
 
         <TextView
+            android:id="@+id/btn_export"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:padding="8dp"
+            android:text="@string/export_backup"
+            android:textColor="@color/accent_blue"
+            android:textSize="14sp" />
+
+        <TextView
             android:id="@+id/btn_test"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
