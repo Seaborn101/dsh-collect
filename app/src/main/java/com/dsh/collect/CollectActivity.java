@@ -66,10 +66,9 @@ public class CollectActivity extends Activity {
         Article a = existing != null ? existing : new Article();
         boolean isNew = existing == null;
         a.url = url;
-        if (!title.isEmpty()) {
-            a.title = title;
-        } else if (a.title == null || a.title.isEmpty()) {
-            a.title = fallbackTitle(url);
+        if (a.title == null || a.title.isEmpty()) {
+            // 已有标题不覆盖（人工改过的、或已经加工过的）
+            a.title = title.isEmpty() ? fallbackTitle(url) : title;
         }
         a.account = a.account == null ? "" : a.account;
         a.tags = a.tags == null ? "" : a.tags;
@@ -80,7 +79,15 @@ public class CollectActivity extends Activity {
             a.fetchState = Article.FETCH_PENDING;
         }
         db.upsert(a);
-        Store.debug(app, "saved id=" + a.id + " title=" + a.title + " url=" + a.url);
+        Store.debug(app, (isNew ? "saved" : "duplicate") + " id=" + a.id
+                + " title=" + a.title + " url=" + a.url);
+
+        // 已经加工过的，重复收藏不再重抓重调模型，省钱也避免覆盖
+        if (!isNew && "L1".equals(a.layer)) {
+            Store.exportMd(app, a);
+            Store.exportJsonl(app, db.all());
+            return;
+        }
 
         // 立即导出（先存链接，后台补正文）
         Store.exportMd(app, a);
