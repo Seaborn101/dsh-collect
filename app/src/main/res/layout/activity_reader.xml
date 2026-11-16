@@ -53,6 +53,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/surface"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingLeft="12dp"
         android:paddingRight="12dp"
@@ -72,7 +73,7 @@
             android:textSize="13sp" />
 
         <TextView
-            android:id="@+id/mode_offline"
+            android:id="@+id/mode_note"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="8dp"
@@ -81,7 +82,7 @@
             android:paddingTop="6dp"
             android:paddingRight="14dp"
             android:paddingBottom="6dp"
-            android:text="@string/offline_mode"
+            android:text="@string/note_mode"
             android:textColor="@color/text_primary"
             android:textSize="13sp" />
 
@@ -106,22 +107,5 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@color/reader_bg" />
-
-        <ScrollView
-            android:id="@+id/offline_scroll"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@color/reader_bg"
-            android:padding="18dp"
-            android:visibility="gone">
-
-            <TextView
-                android:id="@+id/offline_text"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:lineSpacingExtra="5dp"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp" />
-        </ScrollView>
     </FrameLayout>
 </LinearLayout>
