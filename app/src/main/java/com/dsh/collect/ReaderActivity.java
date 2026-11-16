@@ -89,6 +89,35 @@ public class ReaderActivity extends Activity {
                 showNote();
             }
         });
+        findViewById(R.id.btn_vault).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openInObsidian();
+            }
+        });
+    }
+
+    /** 用 Obsidian 的 URI 打开对应的知识库笔记 */
+    private void openInObsidian() {
+        String cat = (article.category == null || article.category.isEmpty())
+                ? "未分类" : article.category;
+        String rel = "L1/" + cat + "/" + Store.titleSlug(article.title) + ".md";
+        java.io.File f = new java.io.File(Store.VAULT_DIR, rel);
+        if (!f.exists()) {
+            Toast.makeText(getApplicationContext(), getString(R.string.no_note_yet),
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            String vault = new java.io.File(Store.VAULT_DIR).getName();
+            Intent it = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("obsidian://open?vault=" + Uri.encode(vault)
+                            + "&file=" + Uri.encode(rel)));
+            startActivity(it);
+        } catch (Exception e) {
+            Toast.makeText(getApplicationContext(), "没找到 Obsidian 应用",
+                    Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void refreshMeta() {
