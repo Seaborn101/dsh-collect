@@ -24,6 +24,7 @@ final class Actions {
                 "用 AI 加工这篇",
                 "导出 Markdown",
                 "加入待整理队列",
+                "编辑标题/公众号",
                 archived ? "取消归档" : "归档",
                 a.starred ? "取消星标" : "设为星标",
                 "编辑标签",
@@ -52,17 +53,20 @@ final class Actions {
                                 toast(act, "已加入队列：" + f2.getAbsolutePath());
                                 break;
                             case 4:
+                                editTitle(act, db, a, onChanged);
+                                return;
+                            case 5:
                                 db.updateStatus(a.id, archived ? Article.STATUS_READ : Article.STATUS_ARCHIVED);
                                 a.status = archived ? Article.STATUS_READ : Article.STATUS_ARCHIVED;
                                 break;
-                            case 5:
+                            case 6:
                                 db.updateStar(a.id, !a.starred);
                                 a.starred = !a.starred;
                                 break;
-                            case 6:
+                            case 7:
                                 editTags(act, db, a, onChanged);
                                 return;
-                            case 7:
+                            case 8:
                                 new AlertDialog.Builder(act)
                                         .setTitle("确认删除？")
                                         .setMessage("将从 App 与导出目录中移除这篇文章")
@@ -84,6 +88,52 @@ final class Actions {
                                 break;
                         }
                         syncExport(act);
+                        if (onChanged != null) {
+                            onChanged.run();
+                        }
+                    }
+                })
+                .show();
+    }
+
+    /** 手动修正标题与公众号（抓错了的时候用） */
+    private static void editTitle(final Activity act, final Db db, final Article a,
+                                  final Runnable onChanged) {
+        android.widget.LinearLayout box = new android.widget.LinearLayout(act);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (16 * act.getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad, pad, 0);
+
+        final android.widget.EditText t = new android.widget.EditText(act);
+        t.setHint("标题");
+        t.setText(a.title);
+        box.addView(t);
+        final android.widget.EditText c = new android.widget.EditText(act);
+        c.setHint("公众号");
+        c.setText(a.account);
+        box.addView(c);
+
+        new AlertDialog.Builder(act)
+                .setTitle("修正信息")
+                .setView(box)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.save, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String title = t.getText().toString().trim();
+                        String acc = c.getText().toString().trim();
+                        if (title.isEmpty()) {
+                            toast(act, "标题不能为空");
+                            return;
+                        }
+                        db.updateTitleAccount(a.id, title, acc);
+                        a.title = title;
+                        a.account = acc;
+                        // 同步导出与知识库笔记
+                        Store.exportMd(act, a);
+                        Store.exportToVault(act, a);
+                        syncExport(act);
+                        toast(act, "已更新");
                         if (onChanged != null) {
                             onChanged.run();
                         }
