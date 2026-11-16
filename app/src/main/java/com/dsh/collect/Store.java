@@ -206,7 +206,7 @@ public final class Store {
             if (a.publishedAt > 0) {
                 w.write("published: " + readable(a.publishedAt) + "\n");
             }
-            w.write("tags: " + oneLine(a.tags) + "\n");
+            w.write("tags: [" + oneLine(a.tags).replace(" ", ", ") + "]\n");
             w.write("status: " + oneLine(a.status) + "\n");
             w.write("summary: " + oneLine(a.summary) + "\n");
             w.write("---\n\n");
@@ -360,6 +360,85 @@ public final class Store {
         File f = new File(dir, titleSlug(a.title) + ".md");
         writeMarkdown(f, a);
         return f;
+    }
+
+    /**
+     * 删除一篇文章在共享目录与知识库里的所有产物。
+     *
+     * <p>App 删了就该处处都删，否则两边不一致最伤信任。
+     */
+    public static int deleteArtifacts(Context ctx, Article a) {
+        int n = 0;
+        String url = a == null ? "" : a.url;
+        if (url.isEmpty()) {
+            return 0;
+        }
+        // 1) 知识库里的 L1 笔记（按 front matter 的 url 匹配，避免标题改名后找不到）
+        File l1 = new File(VAULT_DIR, "L1");
+        n += deleteByUrl(l1, url, 2);
+        File l2 = new File(VAULT_DIR, "L2");
+        n += deleteByUrl(l2, url, 1);
+        // 2) collected 里的原件
+        n += deleteByUrl(collectedDir(ctx), url, 2);
+        // 3) jsonl 里的索引
+        removeFromJsonl(ctx, url);
+        return n;
+    }
+
+    /** 递归删除 front matter url 匹配的文件 */
+    private static int deleteByUrl(File dir, String url, int depth) {
+        int n = 0;
+        if (dir == null || !dir.exists() || depth < 0) {
+            return 0;
+        }
+        File[] fs = dir.listFiles();
+        if (fs == null) {
+            return 0;
+        }
+        for (File f : fs) {
+            if (f.isDirectory()) {
+                n += deleteByUrl(f, url, depth - 1);
+            } else if (f.getName().endsWith(".md")) {
+                Article a = Import.parseMd(f);
+                if (a != null && url.equals(a.url)) {
+                    if (f.delete()) {
+                        n++;
+                    }
+                }
+            }
+        }
+        return n;
+    }
+
+    /** 从 jsonl 里移除一条 */
+    public static void removeFromJsonl(Context ctx, String url) {
+        File jf = new File(collectedDir(ctx), "articles.jsonl");
+        if (!jf.exists()) {
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new InputStreamReader(new FileInputStream(jf), "UTF-8"));
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.contains("\"url\"") && line.contains(url)) {
+                    continue;
+                }
+                sb.append(line).append('\n');
+            }
+        } catch (Exception ignored) {
+        } finally {
+            close(br);
+        }
+        Writer w = null;
+        try {
+            w = new OutputStreamWriter(new FileOutputStream(jf, false), "UTF-8");
+            w.write(sb.toString());
+        } catch (Exception ignored) {
+        } finally {
+            close(w);
+        }
     }
 
     /** 文件名用的标题（去掉非法字符） */
