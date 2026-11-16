@@ -233,7 +233,7 @@ public final class Import {
                     } else if (k.equals("summary")) {
                         a.summary = v;
                     } else if (k.equals("tags")) {
-                        a.tags = v;
+                        a.tags = v.replace("[", "").replace("]", "").replace(",", " ").trim();
                     } else if (k.equals("status")) {
                         a.status = v;
                     } else if (k.equals("layer")) {
