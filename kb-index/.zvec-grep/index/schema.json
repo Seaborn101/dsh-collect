@@ -1,1 +1,0 @@
-{"path_encoding":"components","embeddings":[{"model":{"provider":"local","name":"bekko-256-int8","contentKinds":["text","code"],"maxBatchSize":32},"dimension":256,"metric":"cosine","maxInputTokens":32768,"maxImageBytes":null}]}
