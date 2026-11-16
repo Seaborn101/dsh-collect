@@ -289,6 +289,11 @@ def l1_apply(args: argparse.Namespace) -> int:
             r = read_md(src_md)
             raw = r["body"]
             src_meta = r["meta"]
+            # 任务包里「## 原文（待加工素材）」之前是加工要求与元信息，
+            # 不该混进笔记的原文段
+            marker = "## 原文（待加工素材）"
+            if marker in raw:
+                raw = raw.split(marker, 1)[1].lstrip("\n").strip()
 
         d = ensure_dir(os.path.join(L1_DIR, category))
         note_path = os.path.join(d, slug(title) + ".md")
